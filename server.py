@@ -8,7 +8,7 @@ accounts = {}
 messages = {}
 
 # Currently connected clients
-clients = set()
+connected_clients = set()
 
 def receive_message(client, address):
     """Receive messages from the client and handles them accordingly"""
@@ -51,6 +51,7 @@ def login(client):
         # TODO: Set up some sort of failure mechanism for when the password is
         # incorrect too many times or user stops wanting to try.
         
+        # TODO: If the user has undelivered messages, send them to the client
     else:
         # If the username doesn't exist
         client.send("new".encode())
@@ -63,7 +64,7 @@ def login(client):
     # Send a success message to the client
     client.send("success".encode())
     print(f"{username} has joined the chat")
-    clients.add(username)
+    connected_clients.add(username)
     return username
 
 
@@ -80,22 +81,21 @@ def handle_client(client, address):
         if data == "":
             break
         command, *args = data.split(" ")
-        if command == "list":
-            client.send(str(accounts.keys()).encode())
-        elif command == "send":
+        if command == "send":
             recipient, message = args
             if recipient in accounts:
                 accounts[recipient].append((username, message))
                 client.send(f"Message sent to {recipient}".encode())
             else:
                 client.send(f"{recipient} is not a user".encode())
-        elif command == "deliver":
-            messages = accounts.get(username, [])
-            for sender, message in messages:
-                client.send(f"From {sender}: {message}".encode())
-            accounts[username] = []
+        elif command == "list":
+            pass
+        elif command == "quit":
+            pass
+        elif command == "delete":
+            pass
             
-    del accounts[username]
+    connected_clients.discard(username)
     print(f"{username} has left the chat")
     client.close()
 

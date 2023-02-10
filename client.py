@@ -17,13 +17,14 @@ def send_messages(client):
         
         # TODO: Implement functionality for each task.
         if task == 'a':
-            pass
+            client.send("list".encode())
         elif task == 'm':
             message = input("What message would you like to send?")
             recipient = input("Who would you like to send it to?")
             client.send(f"send {recipient} {message}".encode())
         elif task == 'd':
             pass
+        elif task == 'q':
 
 
 def login(client):
