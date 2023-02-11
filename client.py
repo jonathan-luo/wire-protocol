@@ -25,6 +25,7 @@ def send_messages(client):
         elif task == 'd':
             pass
         elif task == 'q':
+            pass
 
 
 def login(client):
