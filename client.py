@@ -73,7 +73,8 @@ def login(client):
 def start_client():
     """ Start the client and connect to the server """
     
-    host = "localhost"
+    # TODO: CHANGE THIS TO THE SERVER'S IP ADDRESS
+    host = "localhost" 
     port = 8000
 
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -103,10 +103,11 @@ def handle_client(client, address):
 def start_server():
     """Start the server"""
     
-    host = "localhost"
+    host = socket.gethostbyname(socket.gethostname())
     port = 8000
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
     server.bind((host, port))
     server.listen()
     print("Server started on", host, "port", port)
