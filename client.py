@@ -2,7 +2,7 @@ import socket
 import threading
 
 
-def send_messages(client):
+def handle_client(client):
     """ Send and receive messages to and from the server and print them to the console """
     user = login(client)
     
@@ -83,7 +83,7 @@ def start_client():
     # TODO: Come up with a badass name
     print("Welcome to <Name TBD>!")
 
-    receive_thread = threading.Thread(target=send_messages, args=([client]))
+    receive_thread = threading.Thread(target=handle_client, args=([client]))
     receive_thread.start()
 
 

@@ -10,26 +10,6 @@ messages = {}
 # Currently connected clients
 connected_clients = set()
 
-def receive_message(client, address):
-    """Receive messages from the client and handles them accordingly"""
-    
-    user = login(client)
-
-    while True:
-        data = client.recv(1024).decode()
-        if data == "":
-            break
-         # Split the data into command and message
-        command, *message = data.split(" ")
-
-        # If the command is "login"
-        if command == "login":
-            # Check if the username is in the existing accounts
-            if message[0] in accounts:
-                client.send("Error: User already logged in".encode())
-        else:
-            print(f"Unknown command: {data}")
-
 
 def login(client):
     """Login the user and return the username"""
