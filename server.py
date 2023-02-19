@@ -1,5 +1,8 @@
+from collections import defaultdict
+import fnmatch
 import socket
 import hashlib
+import re
 import threading
 
 
@@ -8,83 +11,125 @@ accounts = {}
 messages = {}
 
 # Currently connected clients
-connected_clients = {}
+connected_clients = defaultdict(set)
+
 
 def process_message(client):
     """Process the message from the client and return the command and arguments"""
+
     message = client.recv(1024).decode()
     command, *args = message.split("|")
     try:
         return int(command), args
     except:
         return None
-    
+
+
+def process_specific_message(client, desired_command):
+    """Process the message from the client, hope to get the desired command, and return the arguments if successful"""
+
+    message = client.recv(1024).decode()
+    if not message:
+        print("The client disconnected.")
+        return None
+
+    command, *args = message.split("|")
+
+    if int(command) != desired_command:
+        print("An error occurred.")
+        return None
+
+    return args
+
+
 def send_message(client, command, *args):
-    """Send a message to the server"""
+    """Send a message to each client"""
+
     message = f"{command}|" + "|".join(args)
     client.send(message.encode())
-
-   
-def quit(client):
-    """Quit the client"""
-    client.close()
-    print(f"Client {client} has disconnected")
-    exit(0)
 
 
 def login(client):
     """Login the user and return the username"""
-    username = client.recv(1024).decode()
+    message = process_message(client)
+    if message is None:
+        return None
+    command, args = message
 
+    if command != 0:
+        return None
+
+    username = args[0]
     if username in accounts:
         # If the username exists, ask for password
-        client.send("exists".encode())
-        
+        send_message(client, 0, "exists")
+
         # Hash the entered password and check it against the stored password hash
-        password = client.recv(1024).decode()
+        response = process_specific_message(client, 0)
+        if response is None:
+            return None
+        password = response[0]
         password_hash = hashlib.sha256(password.encode()).hexdigest()
-        
+
         while accounts[username] != password_hash:
-            client.send("error".encode())
-            password = client.recv(1024).decode()
+            send_message(client, 0, "error")
+            response = process_specific_message(client, 0)
+            if response is None:
+                return None
+            password = response[0]
             password_hash = hashlib.sha256(password.encode()).hexdigest()
-        
-        # TODO: Set up some sort of failure mechanism for when the password is
-        # incorrect too many times or user stops wanting to try.
-        
+
         # TODO: If the user has undelivered messages, send them to the client
     else:
         # If the username doesn't exist
-        client.send("new".encode())
-        
+        send_message(client, 0, "new")
+
         # Hash the entered password and check it against the stored password hash
-        password = client.recv(1024).decode()
+        response = process_specific_message(client, 0)
+        if response is None:
+            return None
+        password = response[0]
         password_hash = hashlib.sha256(password.encode()).hexdigest()
         accounts[username] = password_hash
-    
+
     # Add the client to the connected clients list
-    if username in connected_clients:
-        connected_clients[username].append(client)
-    else:
-        connected_clients[username] = [client]
-        
+    connected_clients[username].add(client)
+
     # Send a success message to the client
-    client.send("success".encode())
+    send_message(client, 0, "success")
     print(f"{username} has joined the chat")
-        
+
     return username
 
 
-def list_users(input: str = None):
-    """List all users matching the input"""
-    if input:
-        pass
-    return list(connected_clients)
+def list_users(client, username, query: str = None):
+    """List all users matching the inputted wildcard text query"""
+
+    all_connected_users = list(filter(lambda x: x != username, connected_clients.keys()))
+    if all_connected_users:
+        # If no wildcard query provided, return all active users other than the current user
+        if not query:
+            send_message(client, 1, *all_connected_users)
+            return all_connected_users
+
+        # Translate wildcard query to regex
+        regex = fnmatch.translate(query)
+        pattern = re.compile(regex)
+        result = list(filter(pattern.match, all_connected_users))
+
+        # If username matches exist, return those matches
+        if result:
+            send_message(client, 1, *result)
+            return result
+
+    # Else return that no users were found.
+    send_message(client, 1, "No users found.")
+    return None
 
 
 def handle_client(client, address):
     """Handle the client connection"""
-    
+
     username = login(client)
     if not username:
         quit(client)
@@ -93,36 +138,33 @@ def handle_client(client, address):
     while True:
         message = process_message(client)
         if message is None:
-            break   
+            break
         command, args = message
-        
-        if command == 0:
-            recipient, message = args[0], args[1]
-            if recipient in accounts:
-                accounts[recipient].append((username, message))
-                client.send(f"Message sent to {recipient}".encode())
-            else:
-                client.send(f"{recipient} is not a user".encode())
-        elif command == 1:
-            pass
+
+        if command == 1:
+            list_users(client, username, args[0])
         elif command == 2:
+            # TODO: Deliver message to user IF the recipient is logged in; otherwise, queue it.
             pass
-        elif command == 3:
-            pass
-            
-    connected_clients.discard(username)
+
+    connected_clients[username].remove(client)
+
+    # If `username` maps to empty set, delete the `username`'s mapping entirely
+    if not connected_clients[username]:
+        del connected_clients[username]
+
     print(f"{username} has left the chat")
     client.close()
 
 
 def start_server():
     """Start the server"""
-    
+
     host = socket.gethostbyname(socket.gethostname())
     port = 8000
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
+
     server.bind((host, port))
     server.listen()
     print("Server started on", host, "port", port)

@@ -7,7 +7,7 @@ We got the computers to communicate by finding the IP address of the server unde
 
 ## Logging In/Creating an Account ##
 Once logged in and connected to the server, the user will be prompted to enter their username.
-If the username exists in the system, then they must enter their password. They have up to 3 tries to enter the correct password. They also have the option to quit, which would then alert the server to close this client. If they correctly get the password, then they are logged in.
+If the username exists in the system, then they must enter their password. They have up to 3 tries to enter the correct password. They also have the option to quit, which would then alert the server to close this client. If they correctly enter their password, then they are logged in.
 If the username doesn’t exist in the system, then they must create a new password and then enter a confirmation password to make a new account. Whenever they enter the wrong confirmation password, they have the option to quit or retry a different password.
 
 - Onboarding
