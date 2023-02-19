@@ -19,6 +19,22 @@ def process_message(client):
     except:
         return None
     
+def process_specific_message(client, desired_command):
+    """Process the message from the client, hope to get the desired command, and return the arguments if successful"""
+    
+    message = client.recv(1024).decode()
+    if not message:
+        print("The client disconnected.")
+        return None
+        
+    command, *args = message.split("|")
+    
+    if int(command) != desired_command:
+        print("An error occurred.")
+        return None
+        
+    return args
+    
 def send_message(client, command, *args):
     """Send a message to the server"""
     message = f"{command}|" + "|".join(args)
@@ -28,37 +44,48 @@ def send_message(client, command, *args):
 def quit(client):
     """Quit the client"""
     client.close()
-    print(f"Client {client} has disconnected")
-    exit(0)
 
 
 def login(client):
     """Login the user and return the username"""
-    username = client.recv(1024).decode()
-
+    message = process_message(client)
+    if message is None:
+        return None
+    command, args = message
+    
+    if command != 0:
+        return None
+    
+    username = args[0]
     if username in accounts:
         # If the username exists, ask for password
-        client.send("exists".encode())
+        send_message(client, 0, "exists")
         
         # Hash the entered password and check it against the stored password hash
-        password = client.recv(1024).decode()
+        response = process_specific_message(client, 0)
+        if response is None:
+            return None
+        password = response[0]
         password_hash = hashlib.sha256(password.encode()).hexdigest()
         
         while accounts[username] != password_hash:
-            client.send("error".encode())
-            password = client.recv(1024).decode()
+            send_message(client, 0, "error")
+            response = process_specific_message(client, 0)
+            if response is None:
+                return None
+            password = response[0]
             password_hash = hashlib.sha256(password.encode()).hexdigest()
-        
-        # TODO: Set up some sort of failure mechanism for when the password is
-        # incorrect too many times or user stops wanting to try.
         
         # TODO: If the user has undelivered messages, send them to the client
     else:
         # If the username doesn't exist
-        client.send("new".encode())
+        send_message(client, 0, "new")
         
         # Hash the entered password and check it against the stored password hash
-        password = client.recv(1024).decode()
+        response = process_specific_message(client, 0)
+        if response is None:
+            return None
+        password = response[0]
         password_hash = hashlib.sha256(password.encode()).hexdigest()
         accounts[username] = password_hash
     
@@ -69,7 +96,7 @@ def login(client):
         connected_clients[username] = [client]
         
     # Send a success message to the client
-    client.send("success".encode())
+    send_message(client, 0, "success")
     print(f"{username} has joined the chat")
         
     return username
@@ -77,9 +104,9 @@ def login(client):
 
 def list_users(input: str = None):
     """List all users matching the input"""
-    if input:
-        pass
-    return list(connected_clients)
+    if input is None:
+        list(connected_clients.keys())
+    pass
 
 
 def handle_client(client, address):
@@ -96,21 +123,14 @@ def handle_client(client, address):
             break   
         command, args = message
         
-        if command == 0:
-            recipient, message = args[0], args[1]
-            if recipient in accounts:
-                accounts[recipient].append((username, message))
-                client.send(f"Message sent to {recipient}".encode())
-            else:
-                client.send(f"{recipient} is not a user".encode())
-        elif command == 1:
-            pass
+        if command == 1:
+            list_users(args)
         elif command == 2:
             pass
         elif command == 3:
             pass
             
-    connected_clients.discard(username)
+    connected_clients[username].remove(client)
     print(f"{username} has left the chat")
     client.close()
 

@@ -49,7 +49,7 @@ def handle_client(client):
     while (task != 'Quit/Log Out'):
         questions = [
                 inquirer.List('task',
-                    message="Please select a task:",
+                    message="Please select a task",
                     choices=choices,
                     carousel=True,
                 )
@@ -85,7 +85,8 @@ def login(client):
     
     # If the user is already in use, ask for password and check if it matches
     if response[0] == "exists":
-        password = input(f"Welcome back, {user}! Please enter your password: ")
+        question = [inquirer.Password('password', message=f"Welcome back, {user}! Please enter your password: ")]
+        password = inquirer.prompt(question)['password']
         
         send_message(client, 0, password)
         response = process_response(client, 0)
@@ -97,7 +98,8 @@ def login(client):
                 print("Too many failed attempts. Please try again later.")
                 send_message(client, 9)
                 return None
-            password = input(f"Hmm, seems like your password was incorrect. You have{tries} more tries. Please re-enter your password: ")
+            question = [inquirer.Password('password', message=f"Hmm, seems like your password was incorrect. You have{tries} more tries. Please re-enter your password")]
+            password = inquirer.prompt(question)['password']
             send_message(client, 0, password)
             
             response = process_response(client, 0)
