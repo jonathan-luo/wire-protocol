@@ -8,7 +8,7 @@ accounts = {}
 messages = {}
 
 # Currently connected clients
-connected_clients = set()
+connected_clients = {}
 
 
 def login(client):
@@ -46,6 +46,13 @@ def login(client):
     print(f"{username} has joined the chat")
     connected_clients.add(username)
     return username
+
+
+def list_users(input: str = None):
+    """List all users matching the input"""
+    if input:
+        pass
+    return list(connected_clients)
 
 
 def handle_client(client, address):

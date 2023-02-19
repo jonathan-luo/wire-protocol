@@ -1,5 +1,8 @@
 import socket
 import threading
+import inquirer
+import re
+from ipaddress import ip_address
 
 
 def handle_client(client):
@@ -7,13 +10,17 @@ def handle_client(client):
     user = login(client)
     
     task = None
+    choices = ['View All Users', 'Send New Message', 'Delete Account', 'Quit/Log Out']
     while (task != 'q'):
-        task = input('''Please select a task by typing in a letter:
-            a -- View all users
-            m -- Send new message
-            d -- Send undelivered messages in your queue
-            q -- Quit/Log out
-            ''')
+        questions = [
+                inquirer.List('task',
+                    message="Please select a task:",
+                    choices=choices,
+                    carousel=True,
+                )
+        ]
+        answers = inquirer.prompt(questions)
+        task = answers['task'][0].lower()
         
         # TODO: Implement functionality for each task.
         if task == 'a':
@@ -73,18 +80,28 @@ def login(client):
 def start_client():
     """ Start the client and connect to the server """
     
-    # TODO: CHANGE THIS TO THE SERVER'S IP ADDRESS
-    host = "localhost" 
-    port = 8000
+    receive_thread = None
+    
+    while not receive_thread:
+        # Asking the user to input a valid IP address
+        questions = [inquirer.Text('ip', message="What's the server's IP address?",
+                    validate=lambda _, x: ip_address(x))]
+        
+        answers = inquirer.prompt(questions)
+        host = answers['ip']
+        port = 8000
+        
+        try:
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client.connect((host, port))
+            
+            # TODO: Come up with a badass name
+            print("Welcome to <Name TBD>!")
 
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect((host, port))
-
-    # TODO: Come up with a badass name
-    print("Welcome to <Name TBD>!")
-
-    receive_thread = threading.Thread(target=handle_client, args=([client]))
-    receive_thread.start()
+            receive_thread = threading.Thread(target=handle_client, args=([client]))
+            receive_thread.start()
+        except:
+            print("Unable to connect to server. Retry with a different IP address.")
 
 
 if __name__ == "__main__":
