@@ -10,6 +10,27 @@ messages = {}
 # Currently connected clients
 connected_clients = {}
 
+def process_message(client) -> tuple(int, list(str)):
+    """Process the message from the client and return the command and arguments"""
+    message = client.recv(1024).decode()
+    command, *args = message.split("|")
+    try:
+        return int(command), args
+    except:
+        return None
+    
+def send_message(client, command, *args):
+    """Send a message to the server"""
+    message = f"{command}|" + "|".join(args)
+    client.send(message.encode())
+
+   
+def quit(client):
+    """Quit the client"""
+    client.close()
+    print(f"Client {client} has disconnected")
+    exit(0)
+
 
 def login(client):
     """Login the user and return the username"""
@@ -40,11 +61,17 @@ def login(client):
         password = client.recv(1024).decode()
         password_hash = hashlib.sha256(password.encode()).hexdigest()
         accounts[username] = password_hash
+    
+    # Add the client to the connected clients list
+    if username in connected_clients:
+        connected_clients[username].append(client)
+    else:
+        connected_clients[username] = [client]
         
     # Send a success message to the client
     client.send("success".encode())
     print(f"{username} has joined the chat")
-    connected_clients.add(username)
+        
     return username
 
 
@@ -60,26 +87,27 @@ def handle_client(client, address):
     
     username = login(client)
     if not username:
-        client.close()
+        quit(client)
         return
 
     while True:
-        data = client.recv(1024).decode()
-        if data == "":
-            break
-        command, *args = data.split(" ")
-        if command == "send":
-            recipient, message = args
+        message = process_message(client)
+        if message is None:
+            break   
+        command, args = message
+        
+        if command == 0:
+            recipient, message = args[0], args[1]
             if recipient in accounts:
                 accounts[recipient].append((username, message))
                 client.send(f"Message sent to {recipient}".encode())
             else:
                 client.send(f"{recipient} is not a user".encode())
-        elif command == "list":
+        elif command == 1:
             pass
-        elif command == "quit":
+        elif command == 2:
             pass
-        elif command == "delete":
+        elif command == 3:
             pass
             
     connected_clients.discard(username)
