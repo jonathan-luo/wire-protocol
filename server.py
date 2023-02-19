@@ -10,7 +10,7 @@ messages = {}
 # Currently connected clients
 connected_clients = {}
 
-def process_message(client) -> tuple(int, list(str)):
+def process_message(client):
     """Process the message from the client and return the command and arguments"""
     message = client.recv(1024).decode()
     command, *args = message.split("|")
