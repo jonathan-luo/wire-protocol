@@ -35,9 +35,8 @@ class ChatService(pb2_grpc.ChatServicer):
     # Once use logs in, server immediately creates a thread for that user that is working on user's behalf
     # Looking for messages
     def Login(self, request, context):
-        print("logging in")
         name = request.name
-        '''if name in accounts_ip:
+        if name in accounts_ip:
             # should be able to login from multiple different hosts
             # so not checking if already logged in
             
@@ -46,17 +45,9 @@ class ChatService(pb2_grpc.ChatServicer):
             response = {'message': result, 'received': True}
         else:
             result = "Error: Not a registered account.  Create an account"
-            response = {'message': result, 'received': True}'''
+            response = {'message': result, 'received': True}
 
-        print(accounts_queue[name])
-        myDict = accounts_queue[name]
-        for sender in myDict:
-            for msg in myDict[sender]:
-                response = {'destination': name, 'source': sender, 'text': msg}
-                print("hereee")
-                return pb2.MessageInfo(**response)
-        #x = threading.Thread(target=scan_queue, args=(name,))
-
+        return pb2.ServerResponse(**response)
 
     def ListAccounts(self, request, context):
         accounts_str = ""
@@ -86,13 +77,15 @@ class ChatService(pb2_grpc.ChatServicer):
         response = {'message': result, 'received': True}
         return pb2.ServerResponse(**response)
 
-'''def scan_queue(name):
-    while (accounts_status[name] == True):
-        myDict = accounts_queue[name]
-        for sender in myDict:
-            for msg in myDict[sender]:
-                response = {'destination': name, 'source': sender, text: msg}
-                yield pb2.MessageInfo(**response)'''
+    def ListenMessages(self, request, context):
+        name = request.name
+        while True:
+            myDict = accounts_queue[name]
+            for sender in myDict:
+                for msg in myDict[sender]:
+                    response = {'destination': name, 'source': sender, 'text': msg}
+                    yield pb2.MessageInfo(**response)
+
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

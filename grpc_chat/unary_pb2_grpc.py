@@ -22,7 +22,7 @@ class ChatStub(object):
         self.Login = channel.unary_unary(
                 '/Chat/Login',
                 request_serializer=unary__pb2.Account.SerializeToString,
-                response_deserializer=unary__pb2.MessageInfo.FromString,
+                response_deserializer=unary__pb2.ServerResponse.FromString,
                 )
         self.ListAccounts = channel.unary_unary(
                 '/Chat/ListAccounts',
@@ -33,6 +33,11 @@ class ChatStub(object):
                 '/Chat/SendMessage',
                 request_serializer=unary__pb2.MessageInfo.SerializeToString,
                 response_deserializer=unary__pb2.ServerResponse.FromString,
+                )
+        self.ListenMessages = channel.unary_stream(
+                '/Chat/ListenMessages',
+                request_serializer=unary__pb2.Account.SerializeToString,
+                response_deserializer=unary__pb2.MessageInfo.FromString,
                 )
 
 
@@ -63,6 +68,12 @@ class ChatServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ListenMessages(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ChatServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -74,7 +85,7 @@ def add_ChatServicer_to_server(servicer, server):
             'Login': grpc.unary_unary_rpc_method_handler(
                     servicer.Login,
                     request_deserializer=unary__pb2.Account.FromString,
-                    response_serializer=unary__pb2.MessageInfo.SerializeToString,
+                    response_serializer=unary__pb2.ServerResponse.SerializeToString,
             ),
             'ListAccounts': grpc.unary_unary_rpc_method_handler(
                     servicer.ListAccounts,
@@ -85,6 +96,11 @@ def add_ChatServicer_to_server(servicer, server):
                     servicer.SendMessage,
                     request_deserializer=unary__pb2.MessageInfo.FromString,
                     response_serializer=unary__pb2.ServerResponse.SerializeToString,
+            ),
+            'ListenMessages': grpc.unary_stream_rpc_method_handler(
+                    servicer.ListenMessages,
+                    request_deserializer=unary__pb2.Account.FromString,
+                    response_serializer=unary__pb2.MessageInfo.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -126,7 +142,7 @@ class Chat(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/Chat/Login',
             unary__pb2.Account.SerializeToString,
-            unary__pb2.MessageInfo.FromString,
+            unary__pb2.ServerResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -161,5 +177,22 @@ class Chat(object):
         return grpc.experimental.unary_unary(request, target, '/Chat/SendMessage',
             unary__pb2.MessageInfo.SerializeToString,
             unary__pb2.ServerResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ListenMessages(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/Chat/ListenMessages',
+            unary__pb2.Account.SerializeToString,
+            unary__pb2.MessageInfo.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
