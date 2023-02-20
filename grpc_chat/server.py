@@ -85,6 +85,7 @@ class ChatService(pb2_grpc.ChatServicer):
                 for msg in myDict[sender]:
                     response = {'destination': name, 'source': sender, 'text': msg}
                     yield pb2.MessageInfo(**response)
+                    myDict[sender].remove(msg)
 
 
 def serve():
