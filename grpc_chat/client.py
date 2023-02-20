@@ -27,6 +27,12 @@ class ChatClient(object):
 
 
 if __name__ == '__main__':
+    # This is happening in thread 1
+    while (True):
+        if logged_in == True:
+            # get stream 
+    
+    # This is happening in thread 2
     while (True):
         user_input = input(">")
         client = ChatClient()

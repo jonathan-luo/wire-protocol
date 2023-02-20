@@ -10,8 +10,8 @@ accounts = {}
 # Associates a username with a logged-in status
 accounts_status = {}
 
-# Associates a username with a message queue
-accounts_queue = {}
+# {Matthew: {Nick: [msg1, msg2, msg3], Ryan: [msg1, msg2, msg3]}, Calvin: {John: [msg1, msg2]}, Mike: {} }
+accounts_queue = {{}}
 
 class ChatService(pb2_grpc.ChatServicer):
     def __init__(self, *args, **kwargs):
@@ -30,13 +30,13 @@ class ChatService(pb2_grpc.ChatServicer):
         
         return pb2.ServerResponse(**response)
 
+    # Once use logs in, user immediately receives the messages in the queue in a stream from the server
     def Login(self, request, context):
         name = request.name
         if name in accounts:
             # should be able to login from multiple different hosts
             # so not checking if already logged in
             
-            #ToDo: update ip address, or add it to a list of ip addresses
             accounts_status[name] = True
             result = f'You, "{name}", are logged in'
             response = {'message': result, 'received': True}
@@ -44,7 +44,13 @@ class ChatService(pb2_grpc.ChatServicer):
             result = "Error: Not a registered account.  Create an account"
             response = {'message': result, 'received': True}
 
-        return pb2.ServerResponse(**response)
+        yield pb2.MessageInfo(**response)
+
+        myDict = accounts_queue[name]
+        for sender in myDict:
+            for msg in myDict[sender]:
+                response = {'destination': name, 'source': sender, text: msg}
+                yield pb2.MessageInfo(**response)
 
     def ListAccounts(self, request, context):
         accounts_str = ""
@@ -53,19 +59,21 @@ class ChatService(pb2_grpc.ChatServicer):
         response = {'accounts': accounts_str}
         return pb2.Accounts(**response)
 
-    def SendMessage(self, request, context):
-        destination = request.destination
-        source = request.source
-        text = request.text
-        #Todo: maybe check source is in accounts          
-        if accounts_status[source] == False:
-            result = "Error: You are not logged in"
-        elif destination not in accounts:
-            result = "Error: Sending to an invalid user"
-        # Whether or not destination is logged in, put it in queue
-        else:
-            accounts_queue[destination].append(text)
-            result = "Message Sent"
+    # Send Message puts message into the destination user's queue
+    def SendMessage(self, request_iterator, context):
+        for request in request_iterator:
+            destination = request.destination
+            source = request.source
+            text = request.text
+            #Todo: maybe check source is in accounts          
+            if accounts_status[source] == False:
+                result = "Error: You are not logged in"
+            elif destination not in accounts:
+                result = "Error: Sending to an invalid user"
+            # Whether or not destination is logged in, put it in queue
+            else:
+                accounts_queue[destination].append(text)
+                result = "Message Sent"
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

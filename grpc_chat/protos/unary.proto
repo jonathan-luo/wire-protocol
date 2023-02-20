@@ -3,9 +3,9 @@ syntax = "proto3";
 
 service Chat{
     rpc CreateAccount(Account) returns (ServerResponse) {}
-    rpc Login(Account) returns (ServerResponse) {}
+    rpc Login(Account) returns (stream MessageInfo) {}
     rpc ListAccounts(NoParam) returns (Accounts) {}
-    rpc SendMessage(MessageInfo) returns (ServerResponse) {}
+    rpc SendMessage(stream MessageInfo) returns (stream MessageInfo) {}
 }
 
 message NoParam {
