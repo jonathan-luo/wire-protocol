@@ -6,7 +6,7 @@ import unary_pb2 as pb2
 import threading
 
 # Associates a unique username with an ip address
-accounts_ip = {}
+accounts = {}
 
 # Associates a username with a logged-in status
 accounts_status = {}
@@ -20,11 +20,11 @@ class ChatService(pb2_grpc.ChatServicer):
 
     def CreateAccount(self, request, context):
         name = request.name
-        if name not in accounts_ip:
-            accounts_ip[name] = "localhost"
+        if name not in accounts:
+            accounts[name] = "localhost"
             accounts_status[name] = False
             accounts_queue[name] = {}
-            result = f'I, the server, have added "{name}" to the accounts list.  Size is "{len(accounts_ip)}"'
+            result = f'I, the server, have added "{name}" to the accounts list.  Size is "{len(accounts)}"'
             response = {'message': result, 'received': True}
         else:
             result = "Error: Username already in use"
@@ -36,7 +36,7 @@ class ChatService(pb2_grpc.ChatServicer):
     # Looking for messages
     def Login(self, request, context):
         name = request.name
-        if name in accounts_ip:
+        if name in accounts:
             # should be able to login from multiple different hosts
             # so not checking if already logged in
             
@@ -51,7 +51,7 @@ class ChatService(pb2_grpc.ChatServicer):
 
     def ListAccounts(self, request, context):
         accounts_str = ""
-        for account in accounts_ip:
+        for account in accounts:
             accounts_str += account + " "
         response = {'accounts': accounts_str}
         return pb2.Accounts(**response)
