@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bunary.proto\"\t\n\x07NoParam\"\x17\n\x07\x41\x63\x63ount\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1c\n\x08\x41\x63\x63ounts\x12\x10\n\x08\x61\x63\x63ounts\x18\x01 \x01(\t\"3\n\x0eServerResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x10\n\x08received\x18\x02 \x01(\x08\"T\n\x0bMessageInfo\x12\x1d\n\x0b\x64\x65stination\x18\x01 \x01(\x0b\x32\x08.Account\x12\x18\n\x06source\x18\x02 \x01(\x0b\x32\x08.Account\x12\x0c\n\x04text\x18\x03 \x01(\t2\xb0\x01\n\x04\x43hat\x12,\n\rCreateAccount\x12\x08.Account\x1a\x0f.ServerResponse\"\x00\x12#\n\x05Login\x12\x08.Account\x1a\x0c.MessageInfo\"\x00\x30\x01\x12%\n\x0cListAccounts\x12\x08.NoParam\x1a\t.Accounts\"\x00\x12.\n\x0bSendMessage\x12\x0c.MessageInfo\x1a\x0f.ServerResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bunary.proto\"\t\n\x07NoParam\"\x17\n\x07\x41\x63\x63ount\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1c\n\x08\x41\x63\x63ounts\x12\x10\n\x08\x61\x63\x63ounts\x18\x01 \x01(\t\"3\n\x0eServerResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x10\n\x08received\x18\x02 \x01(\x08\"@\n\x0bMessageInfo\x12\x13\n\x0b\x64\x65stination\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\x12\x0c\n\x04text\x18\x03 \x01(\t2\xae\x01\n\x04\x43hat\x12,\n\rCreateAccount\x12\x08.Account\x1a\x0f.ServerResponse\"\x00\x12!\n\x05Login\x12\x08.Account\x1a\x0c.MessageInfo\"\x00\x12%\n\x0cListAccounts\x12\x08.NoParam\x1a\t.Accounts\"\x00\x12.\n\x0bSendMessage\x12\x0c.MessageInfo\x1a\x0f.ServerResponse\"\x00\x62\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'unary_pb2', globals())
@@ -29,7 +29,7 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _SERVERRESPONSE._serialized_start=81
   _SERVERRESPONSE._serialized_end=132
   _MESSAGEINFO._serialized_start=134
-  _MESSAGEINFO._serialized_end=218
-  _CHAT._serialized_start=221
-  _CHAT._serialized_end=397
+  _MESSAGEINFO._serialized_end=198
+  _CHAT._serialized_start=201
+  _CHAT._serialized_end=375
 # @@protoc_insertion_point(module_scope)

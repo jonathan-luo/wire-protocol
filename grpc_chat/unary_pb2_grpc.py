@@ -19,7 +19,7 @@ class ChatStub(object):
                 request_serializer=unary__pb2.Account.SerializeToString,
                 response_deserializer=unary__pb2.ServerResponse.FromString,
                 )
-        self.Login = channel.unary_stream(
+        self.Login = channel.unary_unary(
                 '/Chat/Login',
                 request_serializer=unary__pb2.Account.SerializeToString,
                 response_deserializer=unary__pb2.MessageInfo.FromString,
@@ -71,7 +71,7 @@ def add_ChatServicer_to_server(servicer, server):
                     request_deserializer=unary__pb2.Account.FromString,
                     response_serializer=unary__pb2.ServerResponse.SerializeToString,
             ),
-            'Login': grpc.unary_stream_rpc_method_handler(
+            'Login': grpc.unary_unary_rpc_method_handler(
                     servicer.Login,
                     request_deserializer=unary__pb2.Account.FromString,
                     response_serializer=unary__pb2.MessageInfo.SerializeToString,
@@ -124,7 +124,7 @@ class Chat(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/Chat/Login',
+        return grpc.experimental.unary_unary(request, target, '/Chat/Login',
             unary__pb2.Account.SerializeToString,
             unary__pb2.MessageInfo.FromString,
             options, channel_credentials,

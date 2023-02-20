@@ -24,15 +24,13 @@ class ChatClient(object):
         noparam = pb2.NoParam()
         return self.stub.ListAccounts(noparam)
 
+    def send_message(self, destination, source, text):
+        message_info = pb2.MessageInfo(destination=destination, source=source, text=text)
+        return self.stub.SendMessage(message_info)
 
 
-if __name__ == '__main__':
-    # This is happening in thread 1
-    while (True):
-        if logged_in == True:
-            # get stream 
-    
-    # This is happening in thread 2
+
+if __name__ == '__main__':   
     while (True):
         user_input = input(">")
         client = ChatClient()
@@ -47,6 +45,12 @@ if __name__ == '__main__':
         elif user_input[0] == "3":
             #client = ChatClient()
             result = client.list_accounts()
+            print(f'{result}')
+        elif user_input[0] == "4":
+            destination = input("destination:")
+            source = input("source:")
+            text = input("text:")
+            result = client.send_message(destination=destination, source=source, text=text)
             print(f'{result}')
         else:
             print("Invalid")
