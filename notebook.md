@@ -34,3 +34,13 @@ Once successfully logged in, the user will be greeted with a welcome message, as
 - Quit
 
     The server sees: `9`
+
+In addition to these selectable operations for users, there also exist hidden operations such as the following, which are also part of our wire protocol definition, but not explicitly
+
+- Verify Registered User
+
+    The server sees: `3 [username]`
+
+- Verify Only Logged In On One Device
+
+    The server sees: `4 [username]`

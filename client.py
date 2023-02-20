@@ -1,9 +1,28 @@
 import socket
 import threading
 import inquirer
+from datetime import datetime
 from ipaddress import ip_address
 
+MAX_MESSAGE_LENGTH = 280
 illegal_characters = {'|'} # Characters that are not allowed in usernames or passwords or messages to prevent injection attacks
+
+def validate_input(_, input):
+    if len(input) > MAX_MESSAGE_LENGTH:
+        raise inquirer.errors.ValidationError("", reason=f"Your input cannot exceed {MAX_MESSAGE_LENGTH} characters.")
+    for i in illegal_characters:
+        if i in input:
+            raise inquirer.errors.ValidationError("", reason=f"Your input cannot contain the character '{i}'.")
+    return True
+
+
+def is_registered_user(client, username):
+    send_message(client, 3, username)
+    message = process_response(client, 3)
+    if message[0] == 'False':
+        raise inquirer.errors.ValidationError("", reason=f"'{username}' is not a registered account.")
+    return True
+
 
 def process_response(client, desired_command):
     """Process the message from the server, hope to get the desired command, and return the arguments if successful"""
@@ -59,19 +78,45 @@ def handle_client(client):
 
         # TODO: Implement functionality for each task.
         if task == 'View Users':
-            wildcard_query = input("Input wildcard query for specific users (leave empty for all users): ")
-            # TODO: Validate that message doesn't have illegal characters
+            question = [inquirer.Text(
+                'query',
+                message='Input wildcard query for specific users (leave empty for all users)',
+                validate=validate_input
+            )]
+            wildcard_query = inquirer.prompt(question)['query']
             send_message(client, 1, wildcard_query)
             message = process_response(client, 1)
             print("\nAvailable users:\n" + "\n".join(message) + "\n")
         elif task == 'Send New Message':
-            # TODO: Send a message to a user
-            pass
+            # Send a message to another user (or queue it if the other user is not active)
+            deliver_new_message(client, user)
         elif task == 'Delete Account':
+            # TODO: Edit to utilize wire protocols 4 and 5 (i.e., verify that only one instance of user logged in,
+            # and prompt whether they want to log out every other instance)
             password = input("Please enter your password to confirm deletion: ")
             send_message(client, 8, password)
             message = process_response(client, 8)
     quit(client)
+
+
+def deliver_new_message(client, username):
+    questions = [
+        inquirer.Text(
+            'recipient',
+            message='Who would you like to send a message to?',
+            validate=lambda _, x: validate_input(_, x) and is_registered_user(client, x)
+        ),
+        inquirer.Text(
+            'message',
+            message='Please enter the message you would like to send',
+            validate=validate_input
+        )
+    ]
+    current_time = str(datetime.now())
+    answer = inquirer.prompt(questions)
+    recipient, message = answer['recipient'], answer['message']
+    send_message(client, 2, username, recipient, message, current_time)
+    message = process_response(client, 2)
 
 
 def login(client):

@@ -8,10 +8,20 @@ import threading
 
 # Dictionary to store the users and their messages
 accounts = {}
-messages = {}
+messages = defaultdict(lambda: defaultdict(list))
+unsent_message_queue = defaultdict(list)
 
 # Currently connected clients
 connected_clients = defaultdict(set)
+
+
+# Define class to package user message information
+class UserMessage:
+    def __init__(self, sender, recipient, message, time):
+        self.sender = sender
+        self.recipient = recipient
+        self.message = message
+        self.time = time
 
 
 def process_message(client):
@@ -127,13 +137,34 @@ def list_users(client, username, query: str = None):
     return None
 
 
+def deliver_new_message(client, *args):
+    sender, recipient, message, time = args
+    packaged_message = UserMessage(sender, recipient, message, time)
+    if recipient not in connected_clients:
+        unsent_message_queue['recipient'].append(packaged_message)
+    else:
+        # TODO: Deliver message to recipient.
+        pass
+    messages[sender, recipient] = packaged_message
+    return packaged_message
+
+
+def quit(client, username):
+    '''Logs out the instance of account `username` using socket `client`'''
+
+    connected_clients[username].remove(client)
+    client.close()
+
+
 def handle_client(client, address):
     """Handle the client connection"""
 
     username = login(client)
     if not username:
-        quit(client)
+        quit(client, username)
         return
+
+    # TODO: Send all messages that are queued immediately to client.
 
     while True:
         message = process_message(client)
@@ -142,11 +173,26 @@ def handle_client(client, address):
         command, args = message
 
         if command == 1:
+            # List other active users based on wildcard query provided (if any)
             list_users(client, username, args[0])
         elif command == 2:
             # TODO: Deliver message to user IF the recipient is logged in; otherwise, queue it.
-            pass
+            deliver_new_message(client, *args)
+            send_message(client, 2, 'Success')
+        elif command == 3:
+            # Returns to client whether an account is a registered account.
+            send_message(client, 3, str(args[0] in accounts))
+        elif command == 4:
+            # Returns to client whether a user is currently logged in on multiple devices
+            send_message(client, 4, str(len(connected_clients[args[0]]) > 1))
+        elif command == 5:
+            # Logs out all instances of `username` aside from the one using socket `client`
+            for c in connected_clients[username]:
+                if c != client:
+                    quit(client, username)
+            send_message(client, 5, 'Success')
 
+    # Log out `username` on the `client` socket
     connected_clients[username].remove(client)
 
     # If `username` maps to empty set, delete the `username`'s mapping entirely
