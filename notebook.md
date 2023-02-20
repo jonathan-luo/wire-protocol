@@ -21,6 +21,8 @@ Once successfully logged in, the user will be greeted with a welcome message, as
 
     The server sees: `1 [arg : str]`
 
+    The method by which users can specify their search criteria is as follows: Once they select "View Users" as their desired task, a prompt pops up asking if they would like to submit a wildcard query for specific users. Leaving this prompt blank (i.e., by simply pressing Enter) will return all active users other than the current user, if any. Otherwise, the user can specify, using GLOB wildcard syntax, usernames that they wish to query for. On the backend, searching is done by converting the GLOB query into Regex using the `fnmatch.translate` function. Then, that regex pattern is compiled and used to filter over all active users (other than the current user). If no matches are found, "No users found." is printed, which is the same behavior as when there are no other active users at all.
+
 - Send A Message
 
     The server sees: `2 [username] [message]`
