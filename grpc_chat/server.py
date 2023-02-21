@@ -67,13 +67,16 @@ class ChatService(pb2_grpc.ChatServicer):
         source = request.source
         text = request.text
 
-        #Todo: maybe check source is in accounts          
-        #if accounts_status[source] == False:
-        #    result = "Error: You are not logged in"
-        #elif destination not in accounts_ip:
-        #    result = "Error: Sending to an invalid user"
-        # Whether or not destination is logged in, put it in queue
-        #else:
+        if source not in accounts or accounts_status[source] == False:
+            result = "Error: username not valid or not logged in"
+            response = {'message': result, 'error': True}
+            return pb2.ServerResponse(**response)
+
+        if destination not in accounts:
+            result = "Error: destination not valid"
+            response = {'message': result, 'error': True}
+            return pb2.ServerResponse(**response)
+            
         if source not in accounts_queue[destination]:
             accounts_queue[destination][source] = [text]
         else:
