@@ -96,7 +96,7 @@ class ChatService(pb2_grpc.ChatServicer):
         username = request.username
         while True:
             myDict = accounts_queue[username]
-            for sender in myDict:
+            for sender in list(myDict):
                 for msg in myDict[sender]:
                     response = {'destination': username, 'source': sender, 'text': msg}
                     yield pb2.MessageInfo(**response)
