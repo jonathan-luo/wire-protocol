@@ -3,9 +3,16 @@ import threading
 import inquirer
 from datetime import datetime
 from ipaddress import ip_address
+from textwrap import dedent
 
-MAX_MESSAGE_LENGTH = 280
-illegal_characters = {'|'} # Characters that are not allowed in usernames or passwords or messages to prevent injection attacks
+TIME_FORMAT = '%Y-%m-%d %H:%M'
+MAX_MESSAGE_LENGTH = 280     # Character limit for input strings
+RECEIVE_MESSAGE_COMMAND = 6  # Command number that overrides inquirer prompts and immediately displays messages received
+illegal_characters = {'|'}   # Characters that are not allowed in usernames or passwords or messages to prevent injection attacks
+BUFSIZE = 861                # TODO: DETERMINE RIGHT BUFFER SIZE; right now is 1 (command) + 280 (max string input) * 3 + 4 (dividers) + 16 (time)
+
+# Queue for message reception thread to load non-message display server messages to
+server_message_queue = []
 
 def validate_input(input):
     """Validates that an input string is not over `MAX_MESSAGE_LENGTH` and
@@ -29,20 +36,49 @@ def is_registered_user(client, username):
     return True
 
 
+def receive_server_messages(client):
+    """Continually receive messages from server, displaying messages if they are messages
+       otherwise queuing up the message"""
+
+    while True:
+        message = client.recv(BUFSIZE).decode()
+        if not message:
+            print("The server disconnected. Please try again later.")
+            quit(client)
+
+        command, *args = message.split("|")
+
+        if int(command) == RECEIVE_MESSAGE_COMMAND:
+            sender, recipient, message, time = args
+            display_message(sender, recipient, message, time)
+        else:
+            server_message_queue.append(message)
+
+
 def process_response(client, desired_command):
     """Process the message from the server, hope to get the desired command, and return the arguments if successful"""
 
-    message = client.recv(1024).decode()
-    if not message:
-        print("The server disconnected. Please try again later.")
-        quit(client)
+    while not server_message_queue:
+        continue
 
+    message = server_message_queue.pop(0)
     command, *args = message.split("|")
 
     if int(command) != desired_command:
         print("An error occurred. Please try again later.")
         quit(client)
+
     return args
+
+
+def display_message(sender, recipient, message, time):
+    print(dedent(f'''
+        From: {sender}
+        To: {recipient}
+        Time: {time}
+
+        {message}
+    '''))
 
 
 def send_message(client, command, *args):
@@ -55,7 +91,7 @@ def send_message(client, command, *args):
 def quit(client):
     """Quit the client"""
 
-    client.close()
+    send_message(client, 9)
     print("Goodbye!")
     exit(0)
 
@@ -124,7 +160,7 @@ def deliver_new_message(client, username):
     ]
 
     # Send message to server with sender, recipient, message, and current time info
-    current_time = str(datetime.now())
+    current_time = str(datetime.now().strftime(TIME_FORMAT))
     answer = inquirer.prompt(questions)
     recipient, message = answer['recipient'], answer['message']
     send_message(client, 2, username, recipient, message, current_time)
@@ -209,9 +245,10 @@ def login_new_user(client, user):
 def start_client():
     """Start the client and connect to the server"""
 
-    receive_thread = None
+    user_thread = None
+    message_reception_thread = None
 
-    while not receive_thread:
+    while not user_thread or not message_reception_thread:
         # Asking the user to input a valid IP address
         questions = [inquirer.Text('ip', message="What's the server's IP address?",
                     validate=lambda _, x: ip_address(x))]
@@ -227,8 +264,10 @@ def start_client():
             # TODO: Come up with a badass name
             print("Welcome to <Name TBD>!")
 
-            receive_thread = threading.Thread(target=handle_client, args=([client]))
-            receive_thread.start()
+            user_thread = threading.Thread(target=handle_client, args=([client]))
+            user_thread.start()
+            message_reception_thread = threading.Thread(target=receive_server_messages, args=([client]))
+            message_reception_thread.start()
         except:
             print("Unable to connect to server. Retry with a different IP address.")
 

@@ -43,4 +43,8 @@ In addition to these selectable operations for users, there also exist hidden op
 
 - Verify Account Only Logged In On One Device
 
-    The server sees: `4 [username]`
+    The server sees: `4`
+
+- Log Out All Other Instances
+
+    The server sees: `5`
