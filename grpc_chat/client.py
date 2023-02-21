@@ -39,10 +39,38 @@ class ChatClient(object):
 
 if __name__ == '__main__':   
     th = None
+    client = ChatClient()
+    username = input("What is your name?")
+    password = input("What is your password?")
+    result = client.create_account(username=username, password=password)
+    if result.error == False:
+        print(f'Welcome, "{username}". I see this is your first time here.  Provide your login credentials below: ')
+        err = True
+        while err == True:
+            username = input("Username: ")
+            password = input("Password: ")
+            result = client.login(username=username, password=password)
+            err = result.error
+            if err == True:
+                print(result.message)
+        print(result.message)
+    else:
+        result = client.login(username=username, password=password)
+        while result.error == True:
+            print(result.message)
+            username = input("Username: ")
+            password = input("Password: ")
+            result = client.login(username=username, password=password)
+        print(result.message)
+
+    th = threading.Thread(target=client.listen_messages, args=(username,))
+    th.start()
+
+        
     while (True):
-        user_input = input("create, login, list, send?")
+        user_input = input("list or send?")
         client = ChatClient()
-        if user_input == "create":
+        '''if user_input == "create":
             username = input("provide username to create: ")
             password = input("provide password for this username: ")
             result = client.create_account(username=username, password=password)
@@ -55,17 +83,16 @@ if __name__ == '__main__':
             print(f'"{result}"')
             if result.error == False:
                 th = threading.Thread(target=client.listen_messages, args=(username,))
-                th.start()
+                th.start()'''
 
-        elif user_input == "list":
+        if user_input == "list":
             result = client.list_accounts()
             print(f'"{result}"')
 
         elif user_input == "send":
-            destination = input("destination:")
-            source = input("source:")
-            text = input("text:")
-            result = client.send_message(destination=destination, source=source, text=text)
+            destination = input("To:")
+            text = input("Message:")
+            result = client.send_message(destination=destination, source=username, text=text)
             print(f'"{result}"')
 
         else:
