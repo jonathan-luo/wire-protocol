@@ -6,10 +6,11 @@ from ipaddress import ip_address
 from textwrap import dedent
 
 TIME_FORMAT = '%Y-%m-%d %H:%M'
+BUFSIZE = 1024
+
 MAX_MESSAGE_LENGTH = 280     # Character limit for input strings
 RECEIVE_MESSAGE_COMMAND = 6  # Command number that overrides inquirer prompts and immediately displays messages received
 illegal_characters = {'|'}   # Characters that are not allowed in usernames or passwords or messages to prevent injection attacks
-BUFSIZE = 861                # TODO: DETERMINE RIGHT BUFFER SIZE; right now is 1 (command) + 280 (max string input) * 3 + 4 (dividers) + 16 (time)
 
 # Queue for message reception thread to load non-message display server messages to
 server_message_queue = []
@@ -41,16 +42,26 @@ def receive_server_messages(client):
        otherwise queuing up the message"""
 
     while True:
+        # Receive message from server
         message = client.recv(BUFSIZE).decode()
-        if not message:
-            print("The server disconnected. Please try again later.")
-            quit(client)
 
+        # If message is None, we know that we've disconnected and we can exit
+        if not message:
+            print("You have disconnected. Goodbye!")
+            exit(0)
+
+        # Else, deserialize message
         command, *args = message.split("|")
 
+        # If `RECEIVE_MESSAGE_COMMAND`, display message
         if int(command) == RECEIVE_MESSAGE_COMMAND:
             sender, recipient, message, time = args
             display_message(sender, recipient, message, time)
+
+            # # Acknowledge to server that message received
+            # send_message(client, RECEIVE_MESSAGE_COMMAND, "success")
+
+        # Else queue the operation up
         else:
             server_message_queue.append(message)
 
@@ -58,6 +69,7 @@ def receive_server_messages(client):
 def process_response(client, desired_command):
     """Process the message from the server, hope to get the desired command, and return the arguments if successful"""
 
+    # Wait until the server message queue is not empty
     while not server_message_queue:
         continue
 
@@ -92,8 +104,6 @@ def quit(client):
     """Quit the client"""
 
     send_message(client, 9)
-    print("Goodbye!")
-    exit(0)
 
 
 def handle_client(client):

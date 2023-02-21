@@ -48,3 +48,7 @@ In addition to these selectable operations for users, there also exist hidden op
 - Log Out All Other Instances
 
     The server sees: `5`
+
+## Additional Notes on Wire Protocol ##
+We chose a buffer size of 1024 as it encapsulates the maximum amount of information that we send over the wire at any given time
+(1 (command) + 280 (max string input) * 3 + 4 (dividers) + 16 (time) = 861 bytes), while still being a power of 2.
