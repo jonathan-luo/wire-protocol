@@ -50,7 +50,14 @@ class ChatService(pb2_grpc.ChatServicer):
             return pb2.ServerResponse(**response)
             
         accounts_status[username] = True
-        result = f'"{username}", are logged in'
+        result = f'"{username}", you are logged in'
+        response = {'message': result, 'error': False}
+        return pb2.ServerResponse(**response)
+
+    def Logout(self, request, context):
+        username = request.username
+        accounts_status[username] = False
+        result = f'"{username}", you are logged out'
         response = {'message': result, 'error': False}
         return pb2.ServerResponse(**response)
 

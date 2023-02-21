@@ -21,6 +21,10 @@ class ChatClient(object):
         account = pb2.Account(username=username, password=password)
         return self.stub.Login(account)
 
+    def logout(self, username):
+        account = pb2.Account(username=username, password="")
+        return self.stub.Logout(account)
+
     def list_accounts(self):
         noparam = pb2.NoParam()
         return self.stub.ListAccounts(noparam)
@@ -36,10 +40,7 @@ class ChatClient(object):
             print(msg.text)
 
 
-
-if __name__ == '__main__':   
-    th = None
-    client = ChatClient()
+def login_ui(client):
     username = input("What is your name?")
     password = input("What is your password?")
     result = client.create_account(username=username, password=password)
@@ -63,12 +64,19 @@ if __name__ == '__main__':
             result = client.login(username=username, password=password)
         print(result.message)
 
+    return username, password
+
+if __name__ == '__main__':   
+    th = None
+    client = ChatClient()
+    username, password = login_ui(client)
+
+    # Once use has logged in, start thread listening for messages and printing at client
     th = threading.Thread(target=client.listen_messages, args=(username,))
     th.start()
-
-        
+    
     while (True):
-        user_input = input("list or send?")
+        user_input = input("list, send, or logout?")
         client = ChatClient()
         '''if user_input == "create":
             username = input("provide username to create: ")
@@ -94,6 +102,14 @@ if __name__ == '__main__':
             text = input("Message:")
             result = client.send_message(destination=destination, source=username, text=text)
             print(f'"{result}"')
+        
+        elif user_input == "logout":
+            confirmation = input("Are you sure you want to logout(y/N)?")
+            if (confirmation == "y" or confirmation == "Y"):
+                client.logout(username=username)
+                login_ui(client)
+            else:
+                pass
 
         else:
             print("Invalid")
