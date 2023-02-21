@@ -13,12 +13,12 @@ class ChatClient(object):
 
         self.stub = pb2_grpc.ChatStub(self.channel)
 
-    def create_account(self, name):
-        account = pb2.Account(name=name)
+    def create_account(self, username, password):
+        account = pb2.Account(username=username, password=password)
         return self.stub.CreateAccount(account)
 
-    def login(self, name):
-        account = pb2.Account(name=name)
+    def login(self, username, password):
+        account = pb2.Account(username=username, password=password)
         return self.stub.Login(account)
 
     def list_accounts(self):
@@ -29,8 +29,8 @@ class ChatClient(object):
         message_info = pb2.MessageInfo(destination=destination, source=source, text=text)
         return self.stub.SendMessage(message_info)
     
-    def listen_messages(self, name):
-        account = pb2.Account(name=name)
+    def listen_messages(self, username):
+        account = pb2.Account(username=username)
         messages = self.stub.ListenMessages(account)
         for msg in messages:
             print(msg.text)
@@ -40,28 +40,33 @@ class ChatClient(object):
 if __name__ == '__main__':   
     th = None
     while (True):
-        user_input = input(">")
+        user_input = input("create, login, list, send?")
         client = ChatClient()
-        if user_input[0] == "1":
-            result = client.create_account(name=user_input[2::])
-            print(f'{result}')
+        if user_input == "create":
+            username = input("provide username to create: ")
+            password = input("provide password for this username: ")
+            result = client.create_account(username=username, password=password)
+            print(f'"{result}"')
 
-        elif user_input[0] == "2":
-            result = client.login(name=user_input[2::])
-            print(f'{result}')
-            th = threading.Thread(target=client.listen_messages, args=(user_input[2::],))
-            th.start()
+        elif user_input == "login":
+            username = input("username: ")
+            password = input("password: ")
+            result = client.login(username=username, password=password)
+            print(f'"{result}"')
+            if result.error == False:
+                th = threading.Thread(target=client.listen_messages, args=(username,))
+                th.start()
 
-        elif user_input[0] == "3":
+        elif user_input == "list":
             result = client.list_accounts()
-            print(f'{result}')
+            print(f'"{result}"')
 
-        elif user_input[0] == "4":
+        elif user_input == "send":
             destination = input("destination:")
             source = input("source:")
             text = input("text:")
             result = client.send_message(destination=destination, source=source, text=text)
-            print(f'{result}')
+            print(f'"{result}"')
 
         else:
             print("Invalid")

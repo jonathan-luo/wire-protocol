@@ -13,16 +13,17 @@ message NoParam {
 }
 
 message Account {
-    string name = 1;
+    string username = 1;
+    string password = 2;
 }
 
 message Accounts {
-    string accounts = 1;
+    string usernames = 1;
 }
 
 message ServerResponse {
     string message = 1;
-    bool received = 2;
+    bool error = 2;
 }
 
 message MessageInfo {

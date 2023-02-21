@@ -5,7 +5,7 @@ import unary_pb2_grpc as pb2_grpc
 import unary_pb2 as pb2
 import threading
 
-# Associates a unique username with an ip address
+# Associates a unique username with a password
 accounts = {}
 
 # Associates a username with a logged-in status
@@ -19,41 +19,46 @@ class ChatService(pb2_grpc.ChatServicer):
         pass
 
     def CreateAccount(self, request, context):
-        name = request.name
-        if name not in accounts:
-            accounts[name] = "localhost"
-            accounts_status[name] = False
-            accounts_queue[name] = {}
-            result = f'I, the server, have added "{name}" to the accounts list.  Size is "{len(accounts)}"'
-            response = {'message': result, 'received': True}
+        username = request.username
+        password = request.password
+        if username not in accounts:
+            accounts[username] = password
+            accounts_status[username] = False
+            accounts_queue[username] = {}
+            result = f'"{username}" added'
+            response = {'message': result, 'error': False}
         else:
             result = "Error: Username already in use"
-            response = {'message': result, 'received': True}
+            response = {'message': result, 'error': True}
         
         return pb2.ServerResponse(**response)
 
     # Once use logs in, server immediately creates a thread for that user that is working on user's behalf
     # Looking for messages
     def Login(self, request, context):
-        name = request.name
-        if name in accounts:
-            # should be able to login from multiple different hosts
-            # so not checking if already logged in
-            
-            accounts_status[name] = True
-            result = f'You, "{name}", are logged in'
-            response = {'message': result, 'received': True}
-        else:
-            result = "Error: Not a registered account.  Create an account"
-            response = {'message': result, 'received': True}
+        username = request.username
+        password = request.password
+        
+        if username not in accounts:
+            result = f'"{username}" is not a registered account.'
+            response = {'message': result, 'error': True}
+            return pb2.ServerResponse(**response)
 
+        if password != accounts[username]:
+            result = "Password does not match username"
+            response = {'message': result, 'error': True}
+            return pb2.ServerResponse(**response)
+            
+        accounts_status[username] = True
+        result = f'"{username}", are logged in'
+        response = {'message': result, 'error': False}
         return pb2.ServerResponse(**response)
 
     def ListAccounts(self, request, context):
         accounts_str = ""
         for account in accounts:
             accounts_str += account + " "
-        response = {'accounts': accounts_str}
+        response = {'usernames': accounts_str}
         return pb2.Accounts(**response)
 
     # Send Message puts message into the destination user's queue
@@ -74,16 +79,16 @@ class ChatService(pb2_grpc.ChatServicer):
         else:
             accounts_queue[destination][source].append(text)
         result = "Message Sent"
-        response = {'message': result, 'received': True}
+        response = {'message': result, 'error': False}
         return pb2.ServerResponse(**response)
 
     def ListenMessages(self, request, context):
-        name = request.name
+        username = request.username
         while True:
-            myDict = accounts_queue[name]
+            myDict = accounts_queue[username]
             for sender in myDict:
                 for msg in myDict[sender]:
-                    response = {'destination': name, 'source': sender, 'text': msg}
+                    response = {'destination': username, 'source': sender, 'text': msg}
                     yield pb2.MessageInfo(**response)
                     myDict[sender].remove(msg)
 
