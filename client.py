@@ -7,7 +7,10 @@ from ipaddress import ip_address
 MAX_MESSAGE_LENGTH = 280
 illegal_characters = {'|'} # Characters that are not allowed in usernames or passwords or messages to prevent injection attacks
 
-def validate_input(_, input):
+def validate_input(input):
+    """Validates that an input string is not over `MAX_MESSAGE_LENGTH` and
+       doesn't contain illegal characters"""
+
     if len(input) > MAX_MESSAGE_LENGTH:
         raise inquirer.errors.ValidationError("", reason=f"Your input cannot exceed {MAX_MESSAGE_LENGTH} characters.")
     for i in illegal_characters:
@@ -17,6 +20,8 @@ def validate_input(_, input):
 
 
 def is_registered_user(client, username):
+    """Checks whether `username` is a registered account by contacting server"""
+
     send_message(client, 3, username)
     message = process_response(client, 3)
     if message[0] == 'False':
@@ -81,7 +86,7 @@ def handle_client(client):
             question = [inquirer.Text(
                 'query',
                 message='Input wildcard query for specific users (leave empty for all users)',
-                validate=validate_input
+                validate=lambda _, x: validate_input(x)
             )]
             wildcard_query = inquirer.prompt(question)['query']
             send_message(client, 1, wildcard_query)
@@ -100,18 +105,25 @@ def handle_client(client):
 
 
 def deliver_new_message(client, username):
+    """Prompts user for recipient and message, and contacts server"""
+
+    # Prompt user for their desired recipient and message
+    # Validation ensures that the input doesn't exceed character limit,
+    # contain illegal character, or request to send to a non-registered user
     questions = [
         inquirer.Text(
             'recipient',
             message='Who would you like to send a message to?',
-            validate=lambda _, x: validate_input(_, x) and is_registered_user(client, x)
+            validate=lambda _, x: validate_input(x) and is_registered_user(client, x)
         ),
         inquirer.Text(
             'message',
             message='Please enter the message you would like to send',
-            validate=validate_input
+            validate=lambda _, x: validate_input(x)
         )
     ]
+
+    # Send message to server with sender, recipient, message, and current time info
     current_time = str(datetime.now())
     answer = inquirer.prompt(questions)
     recipient, message = answer['recipient'], answer['message']

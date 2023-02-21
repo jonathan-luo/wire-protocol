@@ -6,7 +6,7 @@ import re
 import threading
 
 
-# Dictionary to store the users and their messages
+# Dictionary to store the users, their messages, and the unsent message queue
 accounts = {}
 messages = defaultdict(lambda: defaultdict(list))
 unsent_message_queue = defaultdict(list)
@@ -138,6 +138,8 @@ def list_users(client, username, query: str = None):
 
 
 def deliver_new_message(client, *args):
+    """Delivers new message to recipient, if the recipient is active, otherwise queues message"""
+
     sender, recipient, message, time = args
     packaged_message = UserMessage(sender, recipient, message, time)
     if recipient not in connected_clients:
@@ -150,7 +152,7 @@ def deliver_new_message(client, *args):
 
 
 def quit(client, username):
-    '''Logs out the instance of account `username` using socket `client`'''
+    """Logs out the instance of account `username` using socket `client`"""
 
     connected_clients[username].remove(client)
     client.close()

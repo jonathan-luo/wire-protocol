@@ -35,12 +35,12 @@ Once successfully logged in, the user will be greeted with a welcome message, as
 
     The server sees: `9`
 
-In addition to these selectable operations for users, there also exist hidden operations such as the following, which are also part of our wire protocol definition, but not explicitly
+In addition to these selectable operations for users, there also exist hidden operations such as the following, which are also part of our wire protocol definition, but not explicitly available for the user to invoke. These are often part of validating user input, such as ensuring that users send messages only to registered users, or that they can only delete an account when it is only logged into one device.
 
 - Verify Registered User
 
     The server sees: `3 [username]`
 
-- Verify Only Logged In On One Device
+- Verify Account Only Logged In On One Device
 
     The server sees: `4 [username]`
