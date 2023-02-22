@@ -41,14 +41,16 @@ def process_message(client):
 
 def process_specific_message(client, desired_command):
     """Process the message from the client, hope to get the desired command, and return the arguments if successful"""
-
+    
     message = client.recv(BUFSIZE).decode()
     if not message:
         print("The client disconnected.")
         return None
-
+    
     command, *args = message.split("|")
-
+    if int(command) == QUIT_COMMAND:
+        return None
+    
     if int(command) != desired_command:
         print("An error occurred.")
         return None
@@ -114,7 +116,7 @@ def login(lock, client):
     # Send a success message to the client
 
     send_message(client, LOGIN_COMMAND, "success")
-    print(f"{username} has joined the chat")
+    print(f"{username} has joined the chat!")
 
     return username
 
@@ -191,7 +193,7 @@ def delete_account(client, username):
     send_message(client, DELETE_ACCOUNT_COMMAND, 'success')
 
 
-def quit(lock, client, username):
+def quit(lock, client, username, address):
     """Logs out the instance of account `username` using socket `client`"""
 
     with user_locks[username]:
@@ -206,7 +208,11 @@ def quit(lock, client, username):
         # Remove client lock
         del client_locks[client]
 
-    print(f"{username} has left the chat")
+    if username:
+        print(f"{username} has left the chat.")
+    else:
+        print(f"Connection from {address} was ended.")
+        
     client.close()
 
 
@@ -215,7 +221,7 @@ def handle_client(lock, client, address):
 
     username = login(lock, client)
     if not username:
-        quit(lock, client, username)
+        quit(lock, client, username, address)
         return
 
     # Send all messages that are queued immediately to client.
@@ -226,7 +232,7 @@ def handle_client(lock, client, address):
     while True:
         message = process_message(client)
         if message is None:
-            quit(lock, client, username)
+            quit(lock, client, username, address)
             break
         command, args = message
 
@@ -256,7 +262,7 @@ def handle_client(lock, client, address):
             else:
                 send_message(client, DELETE_ACCOUNT_COMMAND, 'error')
         elif command == QUIT_COMMAND:
-            quit(lock, client, username)
+            quit(lock, client, username, address)
             break
 
 
@@ -264,20 +270,20 @@ def start_server():
     """Start the server"""
 
     host = socket.gethostbyname(socket.gethostname())
-    port = 8000
+    port = PORT_NUMBER
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     server.bind((host, port))
     server.listen()
-    print("Server started on", host, "port", port)
+    print(f"Server started on host {host} and port {port}. The clients will need this information to connect to the server.")
 
     # Create global lock
     global_lock = Lock()
 
     while True:
         client, address = server.accept()
-        print("Accepted connection from", address)
+        print(f"Accepted connection from {address}.")
 
         # Create client lock
         client_locks[client] = Lock()

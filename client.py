@@ -51,6 +51,7 @@ def receive_server_messages(client):
         message = client.recv(BUFSIZE).decode()
         message = message.rstrip()
 
+
         # Remove the extra '|' at the end of the message
         message = message[:-1]
 
@@ -159,7 +160,7 @@ def handle_client(client):
     user = login(client)
     try:
         if user is None:
-            send_message(client, RETURN_KEYWORD)
+            send_message(client, QUIT_COMMAND)
             exit(0)
 
         task = None
@@ -331,6 +332,34 @@ def login_new_user(client, user):
     return user
 
 
+def login_new_user(client, user):
+    """Account creation and login procedure for new user"""
+    questions = [inquirer.Password('password', message=f"Welcome, {user}! Seems like you're new here! To register, please enter a password"),
+                     inquirer.Password('confirm', message="Please confirm your password")]
+    password, confirm = inquirer.prompt(questions).values()
+
+    # If the passwords don't match, ask for password again
+    while password != confirm:
+        question = [inquirer.Confirm('retry', message="The passwords don't match. Would you like to try again?")]
+        retry = inquirer.prompt(question)['retry']
+        if not retry:
+            return None
+
+        questions = [inquirer.Password('password', message="Please re-enter your desired password"),
+                        inquirer.Password('confirm', message="Please confirm your password")]
+        password, confirm = inquirer.prompt(questions).values()
+
+    send_message(client, 0, password)
+    response = process_response(client, 0)
+
+    if response[0] == "success":
+        print("Successfully registered and logged in!")
+    else:
+        print("Something went wrong. Please try again later.")
+        return None
+
+    return user
+
 def start_client():
     """Start the client and connect to the server"""
 
@@ -342,9 +371,9 @@ def start_client():
         questions = [inquirer.Text('ip', message="What's the server's IP address?",
                     validate=lambda _, x: ip_address(x))]
 
-        answers = inquirer.prompt(questions)
+        answers = inquirer.prompt(questions, raise_keyboard_interrupt=True)
         host = answers['ip']
-        port = 8000
+        port = PORT_NUMBER
 
         try:
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
