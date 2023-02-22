@@ -96,6 +96,7 @@ def process_response(client, desired_command):
 
 
 def display_message(sender, recipient, message, time):
+    """Display a message"""
     print(dedent(f'''
         ----------------------------------------
         From: {sender}
@@ -118,34 +119,43 @@ def send_message(client, command, *args):
 def delete_account(client, username):
     """Procedure to delete account"""
 
-    # First check whether the user is logged in on multiple devices
+    # Check if user is logged in on multiple devices
     send_message(client, MULTIPLE_LOGIN_COMMAND, username)
     message = process_response(client, MULTIPLE_LOGIN_COMMAND)
+
+    # If user is logged in on multiple devices, prompt them to log out of all other devices
     if message[0] == 'True':
         question = [inquirer.Confirm('confirm_logout',
             message='It appears that your account is logged in on multiple devices. You must only be logged in on one device to delete an account.\nWould you like to log out of all other devices?'
         )]
         response = inquirer.prompt(question)['confirm_logout']
 
-        # Cancel deletion workflow if user refuses to log out of other devices
+        # If user refuses to log out of other devices, cancel account deletion
         if not response:
             return False
 
-        # If user confirms to logout of all devices, logout all other clients.
+        # Log out all other clients if user confirms
         send_message(client, LOGOUT_COMMAND)
         message = process_response(client, LOGOUT_COMMAND)
 
-    # Request for password as final step to confirm deletion
+    # Prompt user to confirm deletion with password
     question = [inquirer.Password('password',
         message='Please enter your password to confirm deletion',
         validate=lambda _, x: validate_input(x))]
     password = inquirer.prompt(question)['password']
+
+    # Send hashed password to server for authentication
     send_message(client, DELETE_ACCOUNT_COMMAND, hash_password(password))
     message = process_response(client, DELETE_ACCOUNT_COMMAND)
+
+    # If password is incorrect, cancel account deletion and inform user
     if message[0] == 'error':
         print("Your password was incorrect, account deletion cancelled.\n")
         return False
+
+    # If account was successfully deleted, return True
     return True
+
 
 
 def quit(client):
@@ -155,11 +165,7 @@ def quit(client):
 
 
 def handle_client(client):
-    """
-    Send and receive messages to and from the server and print them to the console.
-
-    :param client: A socket object representing a client connection.
-    """
+    """ Send and receive messages to and from the server and print them to the console. """
     
     # Authenticate the user with the server.
     user = login(client)
@@ -372,7 +378,7 @@ def login_new_user(client, user):
                         inquirer.Password('confirm', message="Please confirm your password")]
         password, confirm = inquirer.prompt(questions).values()
 
-    send_message(client, 0, password)
+    send_message(client, 0, hash_password(password))
     response = process_response(client, 0)
 
     if response[0] == "success":
