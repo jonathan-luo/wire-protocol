@@ -142,7 +142,7 @@ def delete_account(client, username):
 def quit(client):
     """Quit the client"""
 
-    send_message(client, RETURN_KEYWORD)
+    send_message(client, QUIT_COMMAND)
 
 
 def handle_client(client):
@@ -150,7 +150,7 @@ def handle_client(client):
 
     user = login(client)
     if user is None:
-        send_message(client, RETURN_KEYWORD)
+        send_message(client, QUIT_COMMAND)
         exit(0)
 
     task = None
