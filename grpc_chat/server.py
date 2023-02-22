@@ -5,6 +5,7 @@ import unary_pb2_grpc as pb2_grpc
 import unary_pb2 as pb2
 import threading
 import re
+import socket
 
 # Associates a unique username with a password
 accounts = {}
@@ -131,6 +132,8 @@ def serve():
     pb2_grpc.add_ChatServicer_to_server(ChatService(), server)
     server.add_insecure_port('[::]:50051')
     server.start()
+    host = socket.gethostbyname(socket.gethostname())
+    print(f'server started on {host}')
     server.wait_for_termination()
 
 if __name__ == '__main__':

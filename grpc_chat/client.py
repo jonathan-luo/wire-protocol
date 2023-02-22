@@ -4,8 +4,8 @@ import unary_pb2 as pb2
 import threading
 
 class ChatClient(object):
-    def __init__(self):
-        self.host = 'localhost'
+    def __init__(self, addr):
+        self.host = addr
         self.server_port = 50051
 
         self.channel = grpc.insecure_channel(
@@ -72,7 +72,8 @@ def login_ui(client):
 
 if __name__ == '__main__':   
     th = None
-    client = ChatClient()
+    addr = input("Input IP Address of Host:")
+    client = ChatClient(addr)
     username, password = login_ui(client)
 
     # Once use has logged in, start thread listening for messages and printing at client
@@ -81,7 +82,6 @@ if __name__ == '__main__':
     
     while (True):
         user_input = input("list, send, logout, or delete?")
-        client = ChatClient()
         
         if user_input == "list":
             regex = input("Provide a regular expression:")
