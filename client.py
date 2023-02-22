@@ -21,6 +21,8 @@ def validate_input(input):
 
     if len(input) > MAX_MESSAGE_LENGTH:
         raise inquirer.errors.ValidationError("", reason=f"Your input cannot exceed {MAX_MESSAGE_LENGTH} characters.")
+    if len(input) == 0:
+        raise inquirer.errors.ValidationError("", reason=f"Your input cannot be empty.")
     for i in illegal_characters:
         if i in input:
             raise inquirer.errors.ValidationError("", reason=f"Your input cannot contain the character '{i}'.")
@@ -44,6 +46,7 @@ def receive_server_messages(client):
     while True:
         # Receive message from server
         message = client.recv(BUFSIZE).decode()
+        message = message.rstrip()
 
         # If message is None, we know that we've disconnected and we can exit
         if not message:
@@ -131,7 +134,7 @@ def handle_client(client):
         if task == 'View Users':
             question = [inquirer.Text(
                 'query',
-                message='Input wildcard query for specific users (leave empty for all users)',
+                message='Input wildcard query for specific users ("*" for all users, "b*" for all users starting with "b", etc.)',
                 validate=lambda _, x: validate_input(x)
             )]
             wildcard_query = inquirer.prompt(question)['query']
@@ -144,7 +147,11 @@ def handle_client(client):
         elif task == 'Delete Account':
             # TODO: Edit to utilize wire protocols 4 and 5 (i.e., verify that only one instance of user logged in,
             # and prompt whether they want to log out every other instance)
-            password = input("Please enter your password to confirm deletion: ")
+            # Delete the user's account
+            question = [inquirer.Password('password',
+                message='Please enter your password to confirm deletion',
+                validate=lambda _, x: validate_input(x))]
+            password = inquirer.prompt(question)['password']
             send_message(client, 8, password)
             message = process_response(client, 8)
     quit(client)
@@ -181,9 +188,11 @@ def login(client):
     """Login the client or create a new account"""
 
     # Asks the server if the username is already in use
-    user = input("Please enter your username: ")
-    while not user:
-        user = input("Your username cannot be empty. Please reenter your username: ")
+    question = [inquirer.Text('user',
+                    message=f"Please enter your username",
+                    validate=lambda _, x: validate_input(x))]
+    user = inquirer.prompt(question)['user']
+    
     send_message(client, 0, user)
 
     # Follow designated login procedure based on server response
@@ -194,7 +203,10 @@ def login(client):
 def login_registered_user(client, user):
     """Login procedure for a registered user"""
 
-    password = input(f"Welcome back, {user}! Please enter your password: ")
+    question = [inquirer.Password('password',
+        message='Please enter your password',
+        validate=lambda _, x: validate_input(x))]
+    password = inquirer.prompt(question)['password']
 
     send_message(client, 0, password)
     response = process_response(client, 0)
@@ -210,7 +222,10 @@ def login_registered_user(client, user):
         retry = inquirer.prompt(question)['retry']
         if not retry:
             return None
-        password = input(f"Please re-enter your password: ")
+        question = [inquirer.Password('password',
+                    message=f"Please re-enter your password",
+                    validate=lambda _, x: validate_input(x))]
+        password = inquirer.prompt(question)['password']
         send_message(client, 0, password)
 
         response = process_response(client, 0)

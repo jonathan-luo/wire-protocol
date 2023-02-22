@@ -64,6 +64,8 @@ def send_message(client, command, *args):
 
     with client_locks[client]:
         message = f"{command}|" + "|".join(args)
+        padding = ' ' * (BUFSIZE - len(message))
+        message += padding
         client.send(message.encode())
         # if int(command) == RECEIVE_MESSAGE_COMMAND:
         #     process_specific_message(client, command)
