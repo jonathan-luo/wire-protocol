@@ -17,7 +17,7 @@ def validate_input(input):
         return True
     if len(input) > MAX_MESSAGE_LENGTH:
         raise inquirer.errors.ValidationError("", reason=f"Your input cannot exceed {MAX_MESSAGE_LENGTH} characters.")
-    if len(input) == LOGIN_COMMAND:
+    if len(input) == 0:
         raise inquirer.errors.ValidationError("", reason=f"Your input cannot be empty.")
     for i in ILLEGAL_CHARS:
         if i in input:
