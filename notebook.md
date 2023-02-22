@@ -96,9 +96,13 @@ In addition to these selectable operations for users, there also exist hidden op
     The server logs out the user from all devices except for the current one. A success message is sent back to the client once the user is logged out.
 
 ## Additional Notes on Wire Protocol ##
+
+### Buffer Size ###
 We chose a buffer size of 1024 as it encapsulates the maximum amount of information that we send over the wire at any given time
 (1 (command) + 280 (max string input) * 3 + 4 (dividers) + 16 (time) = 861 bytes), while still being a power of 2.
 
+
+### Locks ###
 Our server uses locks to synchronize access to shared resources in a thread-safe manner. In particular, the `threading.Lock` object is used to guard access to the following shared resources:
 
 - `connected_clients`: This dictionary stores the list of all clients that are currently connected for a given user. This is used to facilitate the case where there are multiple instances of the same user being logged in simultaneously. We add the lock whenever a client connects or disconnects.
@@ -108,3 +112,5 @@ Our server uses locks to synchronize access to shared resources in a thread-safe
 - `messages`: This dictionary stores the message history between users. Whenever a message is sent, it is added to the message history of the sender and recipient. The lock is acquired whenever a message is added to the message history.
 
 The locks ensure that only one thread at a time can modify the shared resources, preventing race conditions and ensuring that the data is consistent and correct.
+
+## Implementation with gRPC ##
