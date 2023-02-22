@@ -1,4 +1,5 @@
 BUFSIZE = 1024 # Buffer size for messages
+PORT_NUMBER = 8000 # Port number to listen on
 
 LOGIN_COMMAND = 0 # Command number that signals to clients that they are being asked to login
 VIEW_USERS_COMMAND = 1 # Command number that signals to server that they are being asked to view users

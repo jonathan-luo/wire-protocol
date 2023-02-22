@@ -252,7 +252,7 @@ def start_server():
     """Start the server"""
 
     host = socket.gethostbyname(socket.gethostname())
-    port = 8000
+    port = PORT_NUMBER
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 

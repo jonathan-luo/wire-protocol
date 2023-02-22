@@ -12,10 +12,46 @@ If the username doesn’t exist in the system, then they must create a new passw
 
 - Onboarding
 
-    The server sees: `LOGIN_COMMAND [args]`
+    The part of the process is separate from the rest of the commands since it's required before the user can make any choices.
+
+    The server sees: `LOGIN_COMMAND [username : str]`
+
+    When the client and the server sends this command in the above format, the two can assert that the conversation is about the login process still. The client will first send an username over, and the server will check if the username already exists in the accounts dictionary. If it does, the server will ask for the user's password and check it against the stored hash. If it doesn't, the server will create a new account for the user.
+
+- Login Existing User
+
+    The client sees: `LOGIN_COMMAND exists`
+
+    If the username exists in the accounts dictionary, the server will send this message to the client, prompting the user to enter their password.
+
+    The server sees: `LOGIN_COMMAND [password : str]`
+    The client sees: `LOGIN_COMMAND success` or `LOGIN_COMMAND error`
+
+    The server then repeatedly checks if the password entered by the user matches the stored password hash, giving them up to three chances to enter it correctly. If the user fails to enter the correct password within three tries, or if the user quits, the server will end the connection.
+
+    If the user enters the correct password, the server will log the user in by adding the client to the `connected_clients` dictionary under the username of the user and send a success message to the client. The server will then print a message indicating that the user has joined the chat.
+
+- Create New Account
+
+    The client sees: `LOGIN_COMMAND new`
+
+    If the username does not exist in the `accounts` dictionary, the server will create a new lock associated with the username and add it to the `user_locks` dictionary.
+
+    The server will then send a message to the client, prompting the user to create a new password.
+
+    The server sees: `LOGIN_COMMAND [new_password : str]`
+    The client sees: `LOGIN_COMMAND success`
+
+    After the user enters the new password, the client will ask for confirmation of the password. If the confirmation password does not match the new password, the client will ask if the user wants to quit or retry again.
+
+    If the confirmation password matches the new password, the server will hash the password and add it to the `accounts` dictionary, then log the user in by adding the client to the `connected_clients` dictionary and send a success message to the client. The server will then print a message indicating that the user has joined the chat.
 
 ## Selection Screen ##
-Once successfully logged in, the user will be greeted with a welcome message, as well as the notification of how many of the same account are logged into the system. They will receive all the undelivered messages. Then, they will receive a selection screen for what they want to do next. The menu consists of:
+Once successfully logged in, the user will be greeted with a welcome message, as well as the notification of how many of the same account are logged into the system. They will receive all the undelivered messages.
+
+Behind the scenes, we've created a thread on the server end for communicating with this specific client and two threads on the client end to handle user input and message reception. The client's `user_thread` takes care of the main client-to-server interactions such as the login process and the selection screen. The `message_reception_thread` will be listening for new undelivered message, and if any of it starts with `RECEIVE_MESSAGE_COMMAND`, then we display the message to the user immediately. Otherwise, they go in the `server_message_queue` to be processed later.
+
+The user's selection menu consists of:
 
 - List All Accounts
 
@@ -25,7 +61,7 @@ Once successfully logged in, the user will be greeted with a welcome message, as
 
 - Send A Message
 
-    The server sees: `SEND_MESSAGE_COMMAND [username] [message]`
+    The server sees: `SEND_MESSAGE_COMMAND [username : str] [message : str]`
 
     When the user logs in, any undelivered messages that were sent to them while they were offline are sent to them. When the user selects "Send A Message," they are prompted to enter the username of the recipient and the message they want to send. If the recipient is currently logged in, the message is immediately delivered to all of their connected devices. Otherwise, the message is added to a queue for the recipient and will be delivered the next time they log in. A success message is sent back to the client once the message is sent.
 
@@ -33,17 +69,17 @@ Once successfully logged in, the user will be greeted with a welcome message, as
 
 - Delete Account
 
-    The server sees: `8`
+    The server sees: `DELETE_ACCOUNT_COMMAND`
 
 - Quit
 
-    The server sees: `9`
+    The server sees: `QUIT_COMMAND`
 
 In addition to these selectable operations for users, there also exist hidden operations such as the following, which are also part of our wire protocol definition, but not explicitly available for the user to invoke. These are often part of validating user input, such as ensuring that users send messages only to registered users, or that they can only delete an account when it is only logged into one device.
 
 - Verify Registered User
 
-    The server sees: `CHECK_ACCOUNT_COMMAND [username]`
+    The server sees: `CHECK_ACCOUNT_COMMAND [username : str]`
 
     The server checks if the username exists and sends a message back to the client indicating whether or not the account exists.
 

@@ -85,7 +85,6 @@ def process_response(client, desired_command):
 def display_message(sender, recipient, message, time):
     print(dedent(f'''
         ----------------------------------------
-        
         From: {sender}
         To: {recipient}
         Time: {time}
@@ -284,7 +283,7 @@ def start_client():
 
         answers = inquirer.prompt(questions)
         host = answers['ip']
-        port = 8000
+        port = PORT_NUMBER
 
         try:
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
