@@ -73,7 +73,6 @@ def login(lock, client):
     if message is None:
         return None
     command, args = message
-
     if command != LOGIN_COMMAND:
         return None
 
@@ -99,6 +98,7 @@ def login(lock, client):
         user_locks[username] = Lock()
 
         # If the username doesn't exist
+
         send_message(client, LOGIN_COMMAND, "new")
 
         # Hash the entered password and check it against the stored password hash
@@ -112,19 +112,20 @@ def login(lock, client):
     connected_clients[username].add(client)
 
     # Send a success message to the client
+
     send_message(client, LOGIN_COMMAND, "success")
     print(f"{username} has joined the chat")
 
     return username
 
 
-def list_users(client, username, query: str = None):
+def list_users(client, username, query: str = '*'):
     """List all users matching the inputted wildcard text query"""
 
     all_connected_users = list(filter(lambda x: x != username, connected_clients.keys()))
     if all_connected_users:
         # If no wildcard query provided, return all active users other than the current user
-        if not query:
+        if query == '*':
             send_message(client, VIEW_USERS_COMMAND, *all_connected_users)
             return all_connected_users
 

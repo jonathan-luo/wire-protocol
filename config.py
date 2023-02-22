@@ -1,4 +1,4 @@
-BUFSIZE = 1024
+BUFSIZE = 1024 # Buffer size for messages
 
 LOGIN_COMMAND = 0 # Command number that signals to clients that they are being asked to login
 VIEW_USERS_COMMAND = 1 # Command number that signals to server that they are being asked to view users
@@ -16,6 +16,6 @@ TIME_FORMAT = '%Y-%m-%d %H:%M'
 BUFSIZE = 1024
 
 MAX_MESSAGE_LENGTH = 280     # Character limit for input strings
-RECEIVE_MESSAGE_COMMAND = 6  # Command number that overrides inquirer prompts and immediately displays messages received
-
 ILLEGAL_CHARS = {'|'}   # Characters that are not allowed in usernames or passwords or messages to prevent injection attacks
+
+RETURN_KEYWORD = '|r|' # Keyword that will return the prompt on the client side
