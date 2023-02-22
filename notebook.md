@@ -144,7 +144,15 @@ When the client connects to the server, the user is prompted to enter their name
 When logging in, an error message will be returned if the password does not match the username or if username does not exist.  If logging in is successful, then the accounts_status dictionary is updated.  accounts_status[username] is set to True.  then on the client, a new thread is created which immediately begins running listening functionality described below.
 
 - Listening for Messages
-In the server, there is a dictionary called accounts_queue which associates a username with a dictionary.  These subdictionaries associate senders with a list of messages from them.  The ListenMessages function will initiate a loop that will continually check that the given username is logged in (checked by looking at accounts_status dictionary).  While the given user is logged in, then a scan of the accounts_queue data structure will be performed and messages for the user will be sent to the listening client.  In gRPC terms, a stream of messages is given to the client.
+In the server, there is a dictionary called accounts_queue which associates a username with a dictionary.  These subdictionaries associate senders with a list of messages from them.  The ListenMessages function will take in an account message and then initiate a loop that will continually check that the username given in the account message is logged in (checked by looking at accounts_status dictionary).  While the given user is logged in, then a scan of the accounts_queue data structure will be performed and messages for the user will be sent to the listening client.  In gRPC terms, a stream of messages is given to the client.  When the user logs out, the loop will no longer execute and the function will terminate, leading to the termination of the thread that was created.  When the user logs back in, another thread will be created for them to listen once again.
 
 - Sending Messages
 In the SendMessage function on the server, the primary thing that happens is a modification to the accounts_queue data structure (described in Listening for Messages section).  If the user is currently logged in, then their listening functionality will be running and they will see that message right away and pull it from the data structure.  Otherwise, the message will sit in that data structure until the user logs in and runs that listening functionality.
+
+- Deleting an Account
+Server: Takes in an account message and deletes the associated username from the dictionary data structures in the server.  
+Client: Can only delete your own account.  The client is not prompted for a username, but instead the current username is packaged into an account message and passed to the server.  The client is asked for confirmation and for a correct password before deletion is performed due to the sensitive nature of the operation.
+
+- Loggin Out
+Server: Takes in an account message and sets accounts_status[username] to False.
+Client: Can only log itself out, cannot log out other users.  As such, client is not prompted for a username but instead the current username is sent to the server for logging out.  The client is asked for confirmation, but not for their password.
