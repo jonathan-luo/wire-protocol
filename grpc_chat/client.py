@@ -17,6 +17,10 @@ class ChatClient(object):
         account = pb2.Account(username=username, password=password)
         return self.stub.CreateAccount(account)
 
+    def delete_account(self, username, password):
+        account = pb2.Account(username=username, password=password)
+        return self.stub.DeleteAccount(account)
+
     def login(self, username, password):
         account = pb2.Account(username=username, password=password)
         return self.stub.Login(account)
@@ -76,23 +80,9 @@ if __name__ == '__main__':
     th.start()
     
     while (True):
-        user_input = input("list, send, or logout?")
+        user_input = input("list, send, logout, or delete?")
         client = ChatClient()
-        '''if user_input == "create":
-            username = input("provide username to create: ")
-            password = input("provide password for this username: ")
-            result = client.create_account(username=username, password=password)
-            print(f'"{result}"')
-
-        elif user_input == "login":
-            username = input("username: ")
-            password = input("password: ")
-            result = client.login(username=username, password=password)
-            print(f'"{result}"')
-            if result.error == False:
-                th = threading.Thread(target=client.listen_messages, args=(username,))
-                th.start()'''
-
+        
         if user_input == "list":
             result = client.list_accounts()
             print(f'"{result}"')
@@ -104,12 +94,24 @@ if __name__ == '__main__':
             print(f'"{result}"')
         
         elif user_input == "logout":
-            confirmation = input("Are you sure you want to logout(y/N)?")
-            if (confirmation == "y" or confirmation == "Y"):
+            confirmation = input("Are you sure you want to logout? (y/N)")
+            if confirmation == "y" or confirmation == "Y":
                 client.logout(username=username)
+                print("Successfully logged out")
                 login_ui(client)
             else:
                 pass
+
+        elif user_input == "delete":
+            password = input("Password:")
+            confirmation = input("Are you sure you want to logout? (y/N)")
+            if confirmation == "y" or confirmation == "Y":
+                result = client.delete_account(username=username, password=password)
+                if result.error == True:
+                    print(result.message)
+                else:
+                    print("Successfully deleted")
+                    login_ui(client)
 
         else:
             print("Invalid")

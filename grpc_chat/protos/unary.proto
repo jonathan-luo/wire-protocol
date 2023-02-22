@@ -3,6 +3,7 @@ syntax = "proto3";
 
 service Chat{
     rpc CreateAccount(Account) returns (ServerResponse) {}
+    rpc DeleteAccount(Account) returns (ServerResponse) {}
     rpc Login(Account) returns (ServerResponse) {}
     rpc Logout(Account) returns (ServerResponse) {}
     rpc ListAccounts(NoParam) returns (Accounts) {}

@@ -11,7 +11,7 @@ accounts = {}
 # Associates a username with a logged-in status
 accounts_status = {}
 
-# {Matthew: {Nick: [msg1, msg2, msg3], Ryan: [msg1, msg2, msg3]}, Calvin: {John: [msg1, msg2]}, Mike: {} }
+# Associates a user with a dictionary storing senders : list of messages
 accounts_queue = {}
 
 class ChatService(pb2_grpc.ChatServicer):
@@ -31,6 +31,24 @@ class ChatService(pb2_grpc.ChatServicer):
             result = "Error: Username already in use"
             response = {'message': result, 'error': True}
         
+        return pb2.ServerResponse(**response)
+
+    def DeleteAccount(self, request, context):
+        username = request.username
+        password = request.password
+        if username not in accounts:
+            result = f'"{username}" is not an existing username'
+            response = {'message': result, 'error': True}
+            return pb2.ServerResponse(**response)
+            
+        if password != accounts[username]:
+            result = f'Wrong password for "{username}"'
+            response = {'message': result, 'error': True}
+            return pb2.ServerResponse(**response)
+
+        del(accounts[username])
+        result = f'"{username}" deleted'
+        response = {'message': result, 'error': False}
         return pb2.ServerResponse(**response)
 
     # Once use logs in, server immediately creates a thread for that user that is working on user's behalf
