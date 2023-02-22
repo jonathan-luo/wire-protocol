@@ -213,7 +213,8 @@ if __name__ == '__main__':
                     message='Please enter the message you would like to send'
                 )
         ]
-            destination, text = inquirer.prompt(questions)['recipient'], inquirer.prompt(questions)['message']
+            answers = inquirer.prompt(questions)
+            destination, text = answers['recipient'], answers['message']
             # Call the send_message method on the ChatClient instance and print the result
             result = client.send_message(destination=destination, source=username, text=text)
             print(f'{result}')
