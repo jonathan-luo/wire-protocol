@@ -150,7 +150,7 @@ def delete_account(client, username):
 def quit(client):
     """Quit the client"""
 
-    send_message(client, RETURN_KEYWORD)
+    send_message(client, QUIT_COMMAND)
 
 
 def handle_client(client):
@@ -193,10 +193,12 @@ def handle_client(client):
             elif task == 'Delete Account':
                 if delete_account(client, user):
                     break
+        if user is None:
+            send_message(client, QUIT_COMMAND)
+            exit(0)
         quit(client)
     except:
         exit(0)
-
 
 def deliver_new_message(client, username):
     """Prompts user for recipient and message, and contacts server"""
