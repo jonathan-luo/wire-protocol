@@ -31,7 +31,7 @@ class ChatClient:
         - password (str): The password for the new account.
 
         Returns:
-        - A pb2.Result object representing the result of the operation.
+        - A pb2.ServerResponse object representing the result of the operation.
         """
         account = pb2.Account(username=username, password=password)
         return self.stub.CreateAccount(account)
@@ -45,7 +45,7 @@ class ChatClient:
         - password (str): The password of the account to be deleted.
 
         Returns:
-        - A pb2.Result object representing the result of the operation.
+        - A pb2.ServerResponse object representing the result of the operation.
         """
         account = pb2.Account(username=username, password=password)
         return self.stub.DeleteAccount(account)
@@ -59,7 +59,7 @@ class ChatClient:
         - password (str): The password of the account to log in to.
 
         Returns:
-        - A pb2.Result object representing the result of the operation.
+        - A pb2.ServerResponse object representing the result of the operation.
         """
         account = pb2.Account(username=username, password=password)
         return self.stub.Login(account)
@@ -72,7 +72,7 @@ class ChatClient:
         - username (str): The username of the account to log out of.
 
         Returns:
-        - A pb2.Result object representing the result of the operation.
+        - A pb2.ServerResponse object representing the result of the operation.
         """
         account = pb2.Account(username=username, password="")
         return self.stub.Logout(account)
@@ -85,7 +85,7 @@ class ChatClient:
         - searchterm (str): The search term to use.
 
         Returns:
-        - A pb2.Result object representing the result of the operation.
+        - A pb2.Accounts object representing the accounts list.
         """
         search_term = pb2.SearchTerm(searchterm=searchterm)
         return self.stub.ListAccounts(search_term)
@@ -100,7 +100,7 @@ class ChatClient:
         - text (str): The text of the message.
 
         Returns:
-        - A pb2.Result object representing the result of the operation.
+        - A pb2.ServerResponse object representing the result of the operation.
         """
         message_info = pb2.MessageInfo(destination=destination, source=source, text=text)
         return self.stub.SendMessage(message_info)
