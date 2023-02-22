@@ -73,7 +73,6 @@ def login(lock, client):
     if message is None:
         return None
     command, args = message
-
     if command != LOGIN_COMMAND:
         return None
 
@@ -101,6 +100,7 @@ def login(lock, client):
         user_locks[username] = Lock()
 
         # If the username doesn't exist
+
         send_message(client, LOGIN_COMMAND, "new")
 
         # Hash the entered password and check it against the stored password hash
@@ -115,6 +115,7 @@ def login(lock, client):
     connected_clients[username].add(client)
 
     # Send a success message to the client
+
     send_message(client, LOGIN_COMMAND, "success")
     print(f"{username} has joined the chat")
 
