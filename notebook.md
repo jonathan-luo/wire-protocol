@@ -67,6 +67,13 @@ The user's selection menu consists of:
 
     When a message is sent from one user to another, it is either immediately delivered to the recipient's connected clients, or it is added to a queue to be delivered the next time the recipient logs in. If the recipient is currently logged in, the `deliver_new_message()` function is called to deliver the message to all of their connected devices. If the recipient is not logged in, the message is added to a queue for the recipient in the `unsent_message_queue` dictionary. Once the recipient logs in, all of their undelivered messages are immediately sent to them, including messages that were in the queue. The message is also stored in the message history `messages` dictionary on the server.
 
+- Receive Messages
+
+    The client sees: `RECEIVE_MESSAGE_COMMAND [sender : str] [recipient : str] [message : str] [time : str] [padding : ' ']`
+
+    The server sends messages to the client using the `RECEIVE_MESSAGE_COMMAND` command. When the client receives a message, it is displayed in the client's UI using the `display_message()` function. The string packs four elements of the message: the sender of the message, the recipient of the message, the message text, and the time the message was sent, which can all be extracted from the string by first removing the padding spaces and extra pipe from the end and then use the rest of the pipes as delimiters (like for any other message from the server). The padding spaces are used to ensure that multiple messages in a client's inbox are delivered smoothly. These variables are then passed to the `display_message()` function, which is responsible for displaying the message on the client's terminal immediately.
+
+
 - Delete Account
 
     The server sees: `DELETE_ACCOUNT_COMMAND`
