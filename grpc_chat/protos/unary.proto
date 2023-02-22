@@ -6,7 +6,7 @@ service Chat{
     rpc DeleteAccount(Account) returns (ServerResponse) {}
     rpc Login(Account) returns (ServerResponse) {}
     rpc Logout(Account) returns (ServerResponse) {}
-    rpc ListAccounts(NoParam) returns (Accounts) {}
+    rpc ListAccounts(SearchTerm) returns (Accounts) {}
     rpc SendMessage(MessageInfo) returns (ServerResponse) {}
     rpc ListenMessages(Account) returns (stream MessageInfo) {}
 }
@@ -32,4 +32,8 @@ message MessageInfo {
     string destination = 1;
     string source = 2;
     string text = 3;
+}
+
+message SearchTerm {
+    string searchterm = 1;
 }

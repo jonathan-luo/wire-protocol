@@ -4,6 +4,7 @@ import time
 import unary_pb2_grpc as pb2_grpc
 import unary_pb2 as pb2
 import threading
+import re
 
 # Associates a unique username with a password
 accounts = {}
@@ -25,7 +26,7 @@ class ChatService(pb2_grpc.ChatServicer):
             accounts[username] = password
             accounts_status[username] = False
             accounts_queue[username] = {}
-            result = f'"{username}" added'
+            result = f'{username} added'
             response = {'message': result, 'error': False}
         else:
             result = "Error: Username already in use"
@@ -37,17 +38,17 @@ class ChatService(pb2_grpc.ChatServicer):
         username = request.username
         password = request.password
         if username not in accounts:
-            result = f'"{username}" is not an existing username'
+            result = f'{username} is not an existing username'
             response = {'message': result, 'error': True}
             return pb2.ServerResponse(**response)
             
         if password != accounts[username]:
-            result = f'Wrong password for "{username}"'
+            result = f'Wrong password for {username}'
             response = {'message': result, 'error': True}
             return pb2.ServerResponse(**response)
 
         del(accounts[username])
-        result = f'"{username}" deleted'
+        result = f'{username} deleted'
         response = {'message': result, 'error': False}
         return pb2.ServerResponse(**response)
 
@@ -58,7 +59,7 @@ class ChatService(pb2_grpc.ChatServicer):
         password = request.password
         
         if username not in accounts:
-            result = f'"{username}" is not a registered account.'
+            result = f'{username} is not a registered account.'
             response = {'message': result, 'error': True}
             return pb2.ServerResponse(**response)
 
@@ -68,21 +69,25 @@ class ChatService(pb2_grpc.ChatServicer):
             return pb2.ServerResponse(**response)
             
         accounts_status[username] = True
-        result = f'"{username}", you are logged in'
+        result = f'{username}, you are logged in'
         response = {'message': result, 'error': False}
         return pb2.ServerResponse(**response)
 
     def Logout(self, request, context):
         username = request.username
         accounts_status[username] = False
-        result = f'"{username}", you are logged out'
+        result = f'{username}, you are logged out'
         response = {'message': result, 'error': False}
         return pb2.ServerResponse(**response)
 
     def ListAccounts(self, request, context):
+        searchterm = request.searchterm
+        pattern = re.compile(searchterm)
         accounts_str = ""
         for account in accounts:
-            accounts_str += account + " "
+            if pattern.search(account) != None:
+                accounts_str += account + " "
+        accounts_str = accounts_str[:-1]
         response = {'usernames': accounts_str}
         return pb2.Accounts(**response)
 
@@ -112,7 +117,7 @@ class ChatService(pb2_grpc.ChatServicer):
 
     def ListenMessages(self, request, context):
         username = request.username
-        while True:
+        while accounts_status[username] == True:
             myDict = accounts_queue[username]
             for sender in list(myDict):
                 for msg in myDict[sender]:

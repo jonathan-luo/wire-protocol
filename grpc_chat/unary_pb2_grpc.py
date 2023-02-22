@@ -36,7 +36,7 @@ class ChatStub(object):
                 )
         self.ListAccounts = channel.unary_unary(
                 '/Chat/ListAccounts',
-                request_serializer=unary__pb2.NoParam.SerializeToString,
+                request_serializer=unary__pb2.SearchTerm.SerializeToString,
                 response_deserializer=unary__pb2.Accounts.FromString,
                 )
         self.SendMessage = channel.unary_unary(
@@ -121,7 +121,7 @@ def add_ChatServicer_to_server(servicer, server):
             ),
             'ListAccounts': grpc.unary_unary_rpc_method_handler(
                     servicer.ListAccounts,
-                    request_deserializer=unary__pb2.NoParam.FromString,
+                    request_deserializer=unary__pb2.SearchTerm.FromString,
                     response_serializer=unary__pb2.Accounts.SerializeToString,
             ),
             'SendMessage': grpc.unary_unary_rpc_method_handler(
@@ -224,7 +224,7 @@ class Chat(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/Chat/ListAccounts',
-            unary__pb2.NoParam.SerializeToString,
+            unary__pb2.SearchTerm.SerializeToString,
             unary__pb2.Accounts.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

@@ -29,9 +29,9 @@ class ChatClient(object):
         account = pb2.Account(username=username, password="")
         return self.stub.Logout(account)
 
-    def list_accounts(self):
-        noparam = pb2.NoParam()
-        return self.stub.ListAccounts(noparam)
+    def list_accounts(self, searchterm):
+        search_term = pb2.SearchTerm(searchterm=searchterm)
+        return self.stub.ListAccounts(search_term)
 
     def send_message(self, destination, source, text):
         message_info = pb2.MessageInfo(destination=destination, source=source, text=text)
@@ -44,15 +44,15 @@ class ChatClient(object):
             print(msg.text)
 
 
+
 def login_ui(client):
     username = input("What is your name?")
     password = input("What is your password?")
     result = client.create_account(username=username, password=password)
     if result.error == False:
-        print(f'Welcome, "{username}". I see this is your first time here.  Provide your login credentials below: ')
+        print(f'Welcome, {username}. I see this is your first time here.  Confirm your password below:')
         err = True
         while err == True:
-            username = input("Username: ")
             password = input("Password: ")
             result = client.login(username=username, password=password)
             err = result.error
@@ -84,21 +84,24 @@ if __name__ == '__main__':
         client = ChatClient()
         
         if user_input == "list":
-            result = client.list_accounts()
-            print(f'"{result}"')
+            regex = input("Provide a regular expression:")
+            result = client.list_accounts(regex)
+            print(f'{result}')
 
         elif user_input == "send":
             destination = input("To:")
             text = input("Message:")
             result = client.send_message(destination=destination, source=username, text=text)
-            print(f'"{result}"')
+            print(f'{result}')
         
         elif user_input == "logout":
             confirmation = input("Are you sure you want to logout? (y/N)")
             if confirmation == "y" or confirmation == "Y":
                 client.logout(username=username)
                 print("Successfully logged out")
-                login_ui(client)
+                username, password = login_ui(client)
+                th = threading.Thread(target=client.listen_messages, args=(username,))
+                th.start()
             else:
                 pass
 
@@ -111,7 +114,9 @@ if __name__ == '__main__':
                     print(result.message)
                 else:
                     print("Successfully deleted")
-                    login_ui(client)
+                    username, password = login_ui(client)
+                    th = threading.Thread(target=client.listen_messages, args=(username,))
+                    th.start()
 
         else:
             print("Invalid")
