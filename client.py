@@ -57,13 +57,18 @@ def receive_server_messages(client):
         # If message is None, we know that we've disconnected and we can exit
         if not message:
             print("You have disconnected. Goodbye!")
+            client.close()
             exit(0)
 
         # Else, deserialize message
         command, *args = message.split("|")
 
-        # If `RECEIVE_MESSAGE_COMMAND`, display message
-        if int(command) == RECEIVE_MESSAGE_COMMAND:
+        # If `QUIT_COMMAND`, quit client
+        if int(command) == QUIT_COMMAND:
+            quit(client)
+
+        # Else if `RECEIVE_MESSAGE_COMMAND`, display message
+        elif int(command) == RECEIVE_MESSAGE_COMMAND:
             sender, recipient, message, time = args
             display_message(sender, recipient, message, time)
 
@@ -136,6 +141,9 @@ def delete_account(client, username):
     password = inquirer.prompt(question)['password']
     send_message(client, DELETE_ACCOUNT_COMMAND, hash_password(password))
     message = process_response(client, DELETE_ACCOUNT_COMMAND)
+    if message[0] == 'error':
+        print("Your password was incorrect, account deletion cancelled.\n")
+        return False
     return True
 
 
@@ -149,42 +157,45 @@ def handle_client(client):
     """Send and receive messages to and from the server and print them to the console"""
 
     user = login(client)
-    if user is None:
-        send_message(client, RETURN_KEYWORD)
+    try:
+        if user is None:
+            send_message(client, RETURN_KEYWORD)
+            exit(0)
+
+        task = None
+        choices = ['View Users', 'Send New Message', 'Delete Account', 'Quit/Log Out']
+        while (task != 'Quit/Log Out'):
+            questions = [
+                    inquirer.List('task',
+                        message=f"Please select a task. Type {RETURN_KEYWORD} to return to this menu.",
+                        choices=choices,
+                        carousel=True,
+                    )
+            ]
+            answers = inquirer.prompt(questions)
+            task = answers['task']
+
+            # TODO: Implement functionality for each task.
+            if task == 'View Users':
+                question = [inquirer.Text(
+                    'query',
+                    message='Input wildcard query for specific users ("*" for all users, "b*" for all users starting with "b", etc.)',
+                    validate=lambda _, x: validate_input(x)
+                )]
+                wildcard_query = inquirer.prompt(question)['query']
+                if wildcard_query != RETURN_KEYWORD:
+                    send_message(client, VIEW_USERS_COMMAND, wildcard_query)
+                    message = process_response(client, VIEW_USERS_COMMAND)
+                    print("\nAvailable users:\n" + "\n".join(message) + "\n")
+            elif task == 'Send New Message':
+                # Send a message to another user (or queue it if the other user is not active)
+                deliver_new_message(client, user)
+            elif task == 'Delete Account':
+                if delete_account(client, user):
+                    break
+        quit(client)
+    except:
         exit(0)
-
-    task = None
-    choices = ['View Users', 'Send New Message', 'Delete Account', 'Quit/Log Out']
-    while (task != 'Quit/Log Out'):
-        questions = [
-                inquirer.List('task',
-                    message=f"Please select a task. Type {RETURN_KEYWORD} to return to this menu.",
-                    choices=choices,
-                    carousel=True,
-                )
-        ]
-        answers = inquirer.prompt(questions)
-        task = answers['task']
-
-        # TODO: Implement functionality for each task.
-        if task == 'View Users':
-            question = [inquirer.Text(
-                'query',
-                message='Input wildcard query for specific users ("*" for all users, "b*" for all users starting with "b", etc.)',
-                validate=lambda _, x: validate_input(x)
-            )]
-            wildcard_query = inquirer.prompt(question)['query']
-            if wildcard_query != RETURN_KEYWORD:
-                send_message(client, VIEW_USERS_COMMAND, wildcard_query)
-                message = process_response(client, VIEW_USERS_COMMAND)
-                print("\nAvailable users:\n" + "\n".join(message) + "\n")
-        elif task == 'Send New Message':
-            # Send a message to another user (or queue it if the other user is not active)
-            deliver_new_message(client, user)
-        elif task == 'Delete Account':
-            if delete_account(client, user):
-                break
-    quit(client)
 
 
 def deliver_new_message(client, username):

@@ -194,21 +194,19 @@ def delete_account(client, username):
 def quit(lock, client, username):
     """Logs out the instance of account `username` using socket `client`"""
 
-    if username:
-        with user_locks[username]:
-            # Log out `username` on the `client` socket
-            connected_clients[username].remove(client)
+    with user_locks[username]:
+        # Log out `username` on the `client` socket
+        connected_clients[username].remove(client)
 
-            # If `username` maps to empty set, delete the `username`'s mapping entirely
-            if not connected_clients[username]:
-                del connected_clients[username]
+        # If `username` maps to empty set, delete the `username`'s mapping entirely
+        if not connected_clients[username]:
+            del connected_clients[username]
 
     with lock:
         # Remove client lock
         del client_locks[client]
 
-    if username:
-        print(f"{username} has left the chat")
+    print(f"{username} has left the chat")
     client.close()
 
 
@@ -246,13 +244,17 @@ def handle_client(lock, client, address):
             send_message(client, MULTIPLE_LOGIN_COMMAND, str(len(connected_clients[username]) > 1))
         elif command == LOGOUT_COMMAND:
             # Logs out all instances of `username` aside from the one using socket `client`
-            for c in connected_clients[username]:
-                if c != client:
-                    quit(lock, client, username)
+            with user_locks[username]:
+                for c in connected_clients[username].copy():
+                    if c != client:
+                        send_message(c, QUIT_COMMAND)
             send_message(client, LOGOUT_COMMAND, 'success')
         elif command == DELETE_ACCOUNT_COMMAND:
-            # Delete account
-            delete_account(client, username)
+            # Delete account if password is correct
+            if args[0] == accounts[username]:
+                delete_account(client, username)
+            else:
+                send_message(client, DELETE_ACCOUNT_COMMAND, 'error')
         elif command == QUIT_COMMAND:
             quit(lock, client, username)
             break
