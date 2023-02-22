@@ -1,8 +1,10 @@
+from config import *
 import server
-from server import list_users
+from server import list_users, deliver_new_message, UserMessage
 import unittest
 from unittest.mock import MagicMock
 from threading import Lock
+from datetime import datetime
 
 class TestServerMethods(unittest.TestCase):
     mock_socket = MagicMock()
@@ -31,6 +33,13 @@ class TestServerMethods(unittest.TestCase):
     def test_List_users_Has_other_users_no_query_matches_Returns_none2(self):
         server.connected_clients = {'user1': None, 'user2': None}
         self.assertIsNone(list_users(self.__class__.mock_socket, 'user1', 'u_s'))
+
+    def test_Deliver_new_message_Happy_case_Returns_packaged_message(self):
+        user1, user2 = 'a', 'b'
+        server.user_locks['b'] = Lock()
+        now = str(datetime.now().strftime(TIME_FORMAT))
+        packed_msg = deliver_new_message(Lock(), self.__class__.mock_socket, user1, user2, 'hi', now)
+        self.assertEqual(UserMessage(user1, user2, 'hi', now), packed_msg)
 
 if __name__ == '__main__':
     unittest.main()

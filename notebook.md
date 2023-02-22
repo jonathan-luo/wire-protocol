@@ -150,9 +150,12 @@ In the server, there is a dictionary called accounts_queue which associates a us
 In the SendMessage function on the server, the primary thing that happens is a modification to the accounts_queue data structure (described in Listening for Messages section).  If the user is currently logged in, then their listening functionality will be running and they will see that message right away and pull it from the data structure.  Otherwise, the message will sit in that data structure until the user logs in and runs that listening functionality.
 
 - Deleting an Account
-Server: Takes in an account message and deletes the associated username from the dictionary data structures in the server.  
+Server: Takes in an account message and deletes the associated username from the dictionary data structures in the server.
 Client: Can only delete your own account.  The client is not prompted for a username, but instead the current username is packaged into an account message and passed to the server.  The client is asked for confirmation and for a correct password before deletion is performed due to the sensitive nature of the operation.
 
 - Loggin Out
 Server: Takes in an account message and sets accounts_status[username] to False.
 Client: Can only log itself out, cannot log out other users.  As such, client is not prompted for a username but instead the current username is sent to the server for logging out.  The client is asked for confirmation, but not for their password.
+
+## Unit Testing ##
+We included some preliminary unit testing for some of the most fundamental functionality of our chatting service, such as listing users and delivering messages. Nevertheless, the vast majority of functionality was tested manually, by analyzing various use cases and edge cases, and making sure that the intended behavior occurred. For instance, we manually tested that queuing messages (single and multiple) to a not logged in user was possible and printed properly in the user's screen.
