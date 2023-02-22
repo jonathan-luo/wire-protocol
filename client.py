@@ -12,7 +12,8 @@ server_message_queue = []
 def validate_input(input):
     """Validates that an input string is not over `MAX_MESSAGE_LENGTH` and
        doesn't contain illegal characters"""
-
+    if input == RETURN_KEYWORD:
+        return True
     if len(input) > MAX_MESSAGE_LENGTH:
         raise inquirer.errors.ValidationError("", reason=f"Your input cannot exceed {MAX_MESSAGE_LENGTH} characters.")
     if len(input) == LOGIN_COMMAND:
@@ -26,6 +27,8 @@ def validate_input(input):
 def is_registered_user(client, username):
     """Checks whether `username` is a registered account by contacting server"""
 
+    if username == RETURN_KEYWORD:
+        return True
     send_message(client, CHECK_ACCOUNT_COMMAND, username)
     message = process_response(client, CHECK_ACCOUNT_COMMAND)
     if message[0] == 'False':
@@ -102,7 +105,7 @@ def send_message(client, command, *args):
 def quit(client):
     """Quit the client"""
 
-    send_message(client, QUIT_COMMAND)
+    send_message(client, RETURN_KEYWORD)
 
 
 def handle_client(client):
@@ -110,7 +113,7 @@ def handle_client(client):
 
     user = login(client)
     if user is None:
-        send_message(client, QUIT_COMMAND)
+        send_message(client, RETURN_KEYWORD)
         exit(0)
 
     task = None
@@ -118,7 +121,7 @@ def handle_client(client):
     while (task != 'Quit/Log Out'):
         questions = [
                 inquirer.List('task',
-                    message="Please select a task",
+                    message=f"Please select a task. Type {RETURN_KEYWORD} to return to this menu.",
                     choices=choices,
                     carousel=True,
                 )
@@ -134,9 +137,10 @@ def handle_client(client):
                 validate=lambda _, x: validate_input(x)
             )]
             wildcard_query = inquirer.prompt(question)['query']
-            send_message(client, VIEW_USERS_COMMAND, wildcard_query)
-            message = process_response(client, VIEW_USERS_COMMAND)
-            print("\nAvailable users:\n" + "\n".join(message) + "\n")
+            if wildcard_query != RETURN_KEYWORD:
+                send_message(client, VIEW_USERS_COMMAND, wildcard_query)
+                message = process_response(client, VIEW_USERS_COMMAND)
+                print("\nAvailable users:\n" + "\n".join(message) + "\n")
         elif task == 'Send New Message':
             # Send a message to another user (or queue it if the other user is not active)
             deliver_new_message(client, user)
@@ -168,13 +172,16 @@ def deliver_new_message(client, username):
         inquirer.Text(
             'message',
             message='Please enter the message you would like to send',
-            validate=lambda _, x: validate_input(x)
+            validate=lambda _, x: validate_input(x),
+            ignore=lambda x: x['recipient'] == RETURN_KEYWORD
         )
     ]
 
     # Send message to server with sender, recipient, message, and current time info
     current_time = str(datetime.now().strftime(TIME_FORMAT))
     answer = inquirer.prompt(questions)
+    if answer['recipient'] == RETURN_KEYWORD or answer['message'] == RETURN_KEYWORD:
+        return
     recipient, message = answer['recipient'], answer['message']
     send_message(client, SEND_MESSAGE_COMMAND, username, recipient, message, current_time)
     message = process_response(client, SEND_MESSAGE_COMMAND)

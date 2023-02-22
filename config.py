@@ -14,3 +14,5 @@ QUIT_COMMAND = 9 # Command number that signals to server that the client is want
 TIME_FORMAT = '%Y-%m-%d %H:%M' # Format for timestamps
 MAX_MESSAGE_LENGTH = 280     # Character limit for input strings
 ILLEGAL_CHARS = {'|'}   # Characters that are not allowed in usernames or passwords or messages to prevent injection attacks
+
+RETURN_KEYWORD = '|r|' # Keyword that will return the prompt on the client side

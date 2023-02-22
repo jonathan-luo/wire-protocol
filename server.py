@@ -121,13 +121,13 @@ def login(lock, client):
     return username
 
 
-def list_users(client, username, query: str = None):
+def list_users(client, username, query: str = '*'):
     """List all users matching the inputted wildcard text query"""
 
     all_connected_users = list(filter(lambda x: x != username, connected_clients.keys()))
     if all_connected_users:
         # If no wildcard query provided, return all active users other than the current user
-        if not query:
+        if query == '*':
             send_message(client, VIEW_USERS_COMMAND, *all_connected_users)
             return all_connected_users
 
