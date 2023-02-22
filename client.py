@@ -309,7 +309,7 @@ def start_client():
         questions = [inquirer.Text('ip', message="What's the server's IP address?",
                     validate=lambda _, x: ip_address(x))]
 
-        answers = inquirer.prompt(questions)
+        answers = inquirer.prompt(questions, raise_keyboard_interrupt=True)
         host = answers['ip']
         port = PORT_NUMBER
 

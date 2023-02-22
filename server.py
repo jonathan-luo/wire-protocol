@@ -41,14 +41,16 @@ def process_message(client):
 
 def process_specific_message(client, desired_command):
     """Process the message from the client, hope to get the desired command, and return the arguments if successful"""
-
+    
     message = client.recv(BUFSIZE).decode()
     if not message:
         print("The client disconnected.")
         return None
-
+    
     command, *args = message.split("|")
-
+    if int(command) == QUIT_COMMAND:
+        return None
+    
     if int(command) != desired_command:
         print("An error occurred.")
         return None
@@ -117,7 +119,7 @@ def login(lock, client):
     # Send a success message to the client
 
     send_message(client, LOGIN_COMMAND, "success")
-    print(f"{username} has joined the chat")
+    print(f"{username} has joined the chat!")
 
     return username
 
@@ -184,7 +186,7 @@ def deliver_unsent_message(client, message):
     )
 
 
-def quit(lock, client, username):
+def quit(lock, client, username, address):
     """Logs out the instance of account `username` using socket `client`"""
 
     if username:
@@ -201,7 +203,10 @@ def quit(lock, client, username):
         del client_locks[client]
 
     if username:
-        print(f"{username} has left the chat")
+        print(f"{username} has left the chat.")
+    else:
+        print(f"Connection from {address} was ended.")
+        
     client.close()
 
 
@@ -210,7 +215,7 @@ def handle_client(lock, client, address):
 
     username = login(lock, client)
     if not username:
-        quit(lock, client, username)
+        quit(lock, client, username, address)
         return
 
     # Send all messages that are queued immediately to client.
@@ -221,7 +226,7 @@ def handle_client(lock, client, address):
     while True:
         message = process_message(client)
         if message is None:
-            quit(lock, client, username)
+            quit(lock, client, username, address)
             break
         command, args = message
 
@@ -241,10 +246,10 @@ def handle_client(lock, client, address):
             # Logs out all instances of `username` aside from the one using socket `client`
             for c in connected_clients[username]:
                 if c != client:
-                    quit(lock, client, username)
+                    quit(lock, client, username, address)
             send_message(client, LOGOUT_COMMAND, 'Success')
         elif command == QUIT_COMMAND:
-            quit(lock, client, username)
+            quit(lock, client, username, address)
             break
 
 
@@ -258,14 +263,14 @@ def start_server():
 
     server.bind((host, port))
     server.listen()
-    print("Server started on", host, "port", port)
+    print(f"Server started on host {host} and port {port}. The clients will need this information to connect to the server.")
 
     # Create global lock
     global_lock = Lock()
 
     while True:
         client, address = server.accept()
-        print("Accepted connection from", address)
+        print(f"Accepted connection from {address}.")
 
         # Create client lock
         client_locks[client] = Lock()
