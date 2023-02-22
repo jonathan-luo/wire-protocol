@@ -85,6 +85,7 @@ def process_response(client, desired_command):
 def display_message(sender, recipient, message, time):
     print(dedent(f'''
         ----------------------------------------
+        
         From: {sender}
         To: {recipient}
         Time: {time}

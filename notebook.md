@@ -65,7 +65,7 @@ We chose a buffer size of 1024 as it encapsulates the maximum amount of informat
 
 Our server uses locks to synchronize access to shared resources in a thread-safe manner. In particular, the `threading.Lock` object is used to guard access to the following shared resources:
 
-- `connected_clients`: This dictionary stores the list of all clients that are currently connected for a given user. This is used to prevent multiple instances of the same user from being logged in simultaneously. We add the lock whenever a client connects or disconnects.
+- `connected_clients`: This dictionary stores the list of all clients that are currently connected for a given user. This is used to facilitate the case where there are multiple instances of the same user being logged in simultaneously. We add the lock whenever a client connects or disconnects.
 
 - `unsent_message_queue`: This dictionary stores the list of unsent messages for each user. Whenever a message is sent to a user who is not currently logged in, the message is added to the user's unsent message queue. Whenever the user logs in again, all unsent messages are sent to the user. We add the lock whenever a message is added to or removed from the queue.
 
