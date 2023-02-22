@@ -1,137 +1,278 @@
+from collections import defaultdict
+import fnmatch
 import socket
 import hashlib
+import re
 import threading
+from threading import Lock
+from config import *
 
+# Dictionary to store the users, their messages, and the unsent message queue
+accounts = {}                                      # Maps username to password hash
+messages = defaultdict(lambda: defaultdict(list))  # Organized such that [s, r] holds a list of UserMessages sent from sender `s` to recipient `r`
+unsent_message_queue = defaultdict(list)           # Organized such that [r] holds a list of unsent UserMessages to recipient `r`
 
-# Dictionary to store the users and their messages
-accounts = {}
-messages = {}
+# Thread locks
+client_locks = {}  # Maps client to lock
+user_locks = {}    # Maps username to lock
 
-# Currently connected clients
-connected_clients = {}
+# Currently connected clients (maps from username to client socket)
+connected_clients = defaultdict(set)
+
+# Define class to package user message information
+class UserMessage:
+    def __init__(self, sender, recipient, message, time):
+        self.sender = sender
+        self.recipient = recipient
+        self.message = message
+        self.time = time
+
 
 def process_message(client):
     """Process the message from the client and return the command and arguments"""
-    message = client.recv(1024).decode()
+
+    message = client.recv(BUFSIZE).decode()
     command, *args = message.split("|")
     try:
         return int(command), args
     except:
         return None
-    
+
+
+def process_specific_message(client, desired_command):
+    """Process the message from the client, hope to get the desired command, and return the arguments if successful"""
+
+    message = client.recv(BUFSIZE).decode()
+    if not message:
+        print("The client disconnected.")
+        return None
+
+    command, *args = message.split("|")
+
+    if int(command) != desired_command:
+        print("An error occurred.")
+        return None
+
+    return args
+
+
 def send_message(client, command, *args):
-    """Send a message to the server"""
-    message = f"{command}|" + "|".join(args)
-    client.send(message.encode())
+    """Send a message to each client"""
 
-   
-def quit(client):
-    """Quit the client"""
-    client.close()
-    print(f"Client {client} has disconnected")
-    exit(0)
+    with client_locks[client]:
+        message = f"{command}|" + "|".join(args)
+        message += '|'
+        padding = ' ' * (BUFSIZE - len(message))
+        message += padding
+        client.send(message.encode())
 
 
-def login(client):
+def login(lock, client):
     """Login the user and return the username"""
-    username = client.recv(1024).decode()
+    message = process_message(client)
+    if message is None:
+        return None
+    command, args = message
+    if command != LOGIN_COMMAND:
+        return None
 
+    username = args[0]
     if username in accounts:
         # If the username exists, ask for password
-        client.send("exists".encode())
-        
+        send_message(client, LOGIN_COMMAND, "exists")
+
         # Hash the entered password and check it against the stored password hash
-        password = client.recv(1024).decode()
+        response = process_specific_message(client, LOGIN_COMMAND)
+        if response is None:
+            return None
+        password = response[0]
         password_hash = hashlib.sha256(password.encode()).hexdigest()
-        
+
         while accounts[username] != password_hash:
-            client.send("error".encode())
-            password = client.recv(1024).decode()
+            send_message(client, LOGIN_COMMAND, "error")
+            response = process_specific_message(client, LOGIN_COMMAND)
+            if response is None:
+                return None
+            password = response[0]
             password_hash = hashlib.sha256(password.encode()).hexdigest()
-        
-        # TODO: Set up some sort of failure mechanism for when the password is
-        # incorrect too many times or user stops wanting to try.
-        
-        # TODO: If the user has undelivered messages, send them to the client
     else:
+        # Create new lock associated with username
+        user_locks[username] = Lock()
+
         # If the username doesn't exist
-        client.send("new".encode())
-        
+
+        send_message(client, LOGIN_COMMAND, "new")
+
         # Hash the entered password and check it against the stored password hash
-        password = client.recv(1024).decode()
+        response = process_specific_message(client, LOGIN_COMMAND)
+        if response is None:
+            return None
+        password = response[0]
         password_hash = hashlib.sha256(password.encode()).hexdigest()
         accounts[username] = password_hash
-    
+
     # Add the client to the connected clients list
-    if username in connected_clients:
-        connected_clients[username].append(client)
-    else:
-        connected_clients[username] = [client]
-        
+    connected_clients[username].add(client)
+
     # Send a success message to the client
-    client.send("success".encode())
+
+    send_message(client, LOGIN_COMMAND, "success")
     print(f"{username} has joined the chat")
-        
+
     return username
 
 
-def list_users(input: str = None):
-    """List all users matching the input"""
-    if input:
-        pass
-    return list(connected_clients)
+def list_users(client, username, query: str = '*'):
+    """List all users matching the inputted wildcard text query"""
+
+    all_connected_users = list(filter(lambda x: x != username, connected_clients.keys()))
+    if all_connected_users:
+        # If no wildcard query provided, return all active users other than the current user
+        if query == '*':
+            send_message(client, VIEW_USERS_COMMAND, *all_connected_users)
+            return all_connected_users
+
+        # Translate wildcard query to regex
+        regex = fnmatch.translate(query)
+        pattern = re.compile(regex)
+        result = list(filter(pattern.match, all_connected_users))
+
+        # If username matches exist, return those matches
+        if result:
+            send_message(client, VIEW_USERS_COMMAND, *result)
+            return result
+
+    # Else return that no users were found.
+    send_message(client, VIEW_USERS_COMMAND, "No users found.")
+    return None
 
 
-def handle_client(client, address):
+def deliver_new_message(lock, client, *args):
+    """Delivers new message to recipient, if the recipient is active, otherwise queues message"""
+
+    sender, recipient, message, time = args
+
+    # Package message into UserMessage instance for cleaner storage
+    packaged_message = UserMessage(sender, recipient, message, time)
+
+    # If recipient not logged in, queue up message
+    if recipient not in connected_clients:
+        with user_locks[recipient]:
+            unsent_message_queue[recipient].append(packaged_message)
+
+    # Else deliver message to each device the recipient is logged in to
+    else:
+        for c in connected_clients[recipient]:
+            deliver_unsent_message(c, packaged_message)
+
+    # Store message in message history dictionary
+    with lock:
+        messages[sender][recipient].append(packaged_message)
+
+    # Success
+    send_message(client, SEND_MESSAGE_COMMAND, 'Success')
+    return packaged_message
+
+
+def deliver_unsent_message(client, message):
+    """Delivers unsent message to all instances where the recipent of the message is logged in"""
+
+    send_message(
+        client,
+        RECEIVE_MESSAGE_COMMAND,
+        message.sender, message.recipient, message.message, message.time
+    )
+
+
+def quit(lock, client, username):
+    """Logs out the instance of account `username` using socket `client`"""
+
+    if username:
+        with user_locks[username]:
+            # Log out `username` on the `client` socket
+            connected_clients[username].remove(client)
+
+            # If `username` maps to empty set, delete the `username`'s mapping entirely
+            if not connected_clients[username]:
+                del connected_clients[username]
+
+    with lock:
+        # Remove client lock
+        del client_locks[client]
+
+    if username:
+        print(f"{username} has left the chat")
+    client.close()
+
+
+def handle_client(lock, client, address):
     """Handle the client connection"""
-    
-    username = login(client)
+
+    username = login(lock, client)
     if not username:
-        quit(client)
+        quit(lock, client, username)
         return
+
+    # Send all messages that are queued immediately to client.
+    unsent_messages = unsent_message_queue[username]
+    while unsent_messages:
+        deliver_unsent_message(client, unsent_messages.pop(0))
 
     while True:
         message = process_message(client)
         if message is None:
-            break   
+            quit(lock, client, username)
+            break
         command, args = message
-        
-        if command == 0:
-            recipient, message = args[0], args[1]
-            if recipient in accounts:
-                accounts[recipient].append((username, message))
-                client.send(f"Message sent to {recipient}".encode())
-            else:
-                client.send(f"{recipient} is not a user".encode())
-        elif command == 1:
-            pass
-        elif command == 2:
-            pass
-        elif command == 3:
-            pass
-            
-    connected_clients.discard(username)
-    print(f"{username} has left the chat")
-    client.close()
+
+        if command == VIEW_USERS_COMMAND:
+            # List other active users based on wildcard query provided (if any)
+            list_users(client, username, args[0])
+        elif command == SEND_MESSAGE_COMMAND:
+            # Deliver message to user IF the recipient is logged in; otherwise, queue it.
+            deliver_new_message(lock, client, *args)
+        elif command == CHECK_ACCOUNT_COMMAND:
+            # Returns to client whether an account is a registered account.
+            send_message(client, CHECK_ACCOUNT_COMMAND, str(args[0] in accounts))
+        elif command == MULTIPLE_LOGIN_COMMAND:
+            # Returns to client whether a user is currently logged in on multiple devices
+            send_message(client, MULTIPLE_LOGIN_COMMAND, str(len(connected_clients[username]) > 1))
+        elif command == LOGOUT_COMMAND:
+            # Logs out all instances of `username` aside from the one using socket `client`
+            for c in connected_clients[username]:
+                if c != client:
+                    quit(lock, client, username)
+            send_message(client, LOGOUT_COMMAND, 'Success')
+        elif command == QUIT_COMMAND:
+            quit(lock, client, username)
+            break
 
 
 def start_server():
     """Start the server"""
-    
+
     host = socket.gethostbyname(socket.gethostname())
-    port = 8000
+    port = PORT_NUMBER
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
+
     server.bind((host, port))
     server.listen()
     print("Server started on", host, "port", port)
 
+    # Create global lock
+    global_lock = Lock()
+
     while True:
         client, address = server.accept()
         print("Accepted connection from", address)
+
+        # Create client lock
+        client_locks[client] = Lock()
+
+        # Start client thread
         client_thread = threading.Thread(
-            target=handle_client, args=(client, address))
+            target=handle_client, args=(global_lock, client, address))
         client_thread.start()
 
 
