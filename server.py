@@ -27,6 +27,12 @@ class UserMessage:
         self.message = message
         self.time = time
 
+    def __eq__(self, other):
+        return self.sender == other.sender and\
+            self.recipient == other.recipient and\
+            self.message == other.message and\
+            self.time == other.time
+
 
 def process_message(client):
     """Process the message from the client and return the command and arguments"""
@@ -41,16 +47,16 @@ def process_message(client):
 
 def process_specific_message(client, desired_command):
     """Process the message from the client, hope to get the desired command, and return the arguments if successful"""
-    
+
     message = client.recv(BUFSIZE).decode()
     if not message:
         print("The client disconnected.")
         return None
-    
+
     command, *args = message.split("|")
     if int(command) == QUIT_COMMAND:
         return None
-    
+
     if int(command) != desired_command:
         print("An error occurred.")
         return None
@@ -213,7 +219,7 @@ def quit(lock, client, username, address):
         print(f"{username} has left the chat.")
     else:
         print(f"Connection from {address} was ended.")
-        
+
     client.close()
 
 

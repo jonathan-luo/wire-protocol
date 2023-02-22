@@ -166,10 +166,10 @@ def quit(client):
 
 def handle_client(client):
     """ Send and receive messages to and from the server and print them to the console. """
-    
+
     # Authenticate the user with the server.
     user = login(client)
-    
+
     try:
         # If the user could not be authenticated, exit the program.
         if user is None:
