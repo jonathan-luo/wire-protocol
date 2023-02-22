@@ -196,13 +196,14 @@ def delete_account(client, username):
 def quit(lock, client, username, address):
     """Logs out the instance of account `username` using socket `client`"""
 
-    with user_locks[username]:
-        # Log out `username` on the `client` socket
-        connected_clients[username].remove(client)
+    if username:
+        with user_locks[username]:
+            # Log out `username` on the `client` socket
+            connected_clients[username].remove(client)
 
-        # If `username` maps to empty set, delete the `username`'s mapping entirely
-        if not connected_clients[username]:
-            del connected_clients[username]
+            # If `username` maps to empty set, delete the `username`'s mapping entirely
+            if not connected_clients[username]:
+                del connected_clients[username]
 
     with lock:
         # Remove client lock

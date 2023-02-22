@@ -155,50 +155,73 @@ def quit(client):
 
 
 def handle_client(client):
-    """Send and receive messages to and from the server and print them to the console"""
+    """
+    Send and receive messages to and from the server and print them to the console.
 
+    :param client: A socket object representing a client connection.
+    """
+    
+    # Authenticate the user with the server.
     user = login(client)
+    
     try:
+        # If the user could not be authenticated, exit the program.
         if user is None:
             send_message(client, QUIT_COMMAND)
             exit(0)
 
+        # Prompt the user for a task until they choose to quit.
         task = None
         choices = ['View Users', 'Send New Message', 'Delete Account', 'Quit/Log Out']
         while (task != 'Quit/Log Out'):
             questions = [
-                    inquirer.List('task',
-                        message=f"Please select a task. Type {RETURN_KEYWORD} to return to this menu.",
-                        choices=choices,
-                        carousel=True,
-                    )
+                inquirer.List('task',
+                    message=f"Please select a task. Type {RETURN_KEYWORD} to return to this menu.",
+                    choices=choices,
+                    carousel=True,
+                )
             ]
             answers = inquirer.prompt(questions)
             task = answers['task']
 
-            # TODO: Implement functionality for each task.
+            # Execute the appropriate task based on the user's choice.
             if task == 'View Users':
-                question = [inquirer.Text(
-                    'query',
-                    message='Input wildcard query for specific users ("*" for all users, "b*" for all users starting with "b", etc.)',
-                    validate=lambda _, x: validate_input(x)
-                )]
+                # Ask the user for a wildcard query for specific users.
+                question = [
+                    inquirer.Text(
+                        'query',
+                        message='Input wildcard query for specific users ("*" for all users, "b*" for all users starting with "b", etc.)',
+                        validate=lambda _, x: validate_input(x)
+                    )
+                ]
                 wildcard_query = inquirer.prompt(question)['query']
+
                 if wildcard_query != RETURN_KEYWORD:
+                    # Send a message to the server requesting the list of available users.
                     send_message(client, VIEW_USERS_COMMAND, wildcard_query)
+                    # Process the response from the server and print it to the console.
                     message = process_response(client, VIEW_USERS_COMMAND)
                     print("\nAvailable users:\n" + "\n".join(message) + "\n")
+
             elif task == 'Send New Message':
-                # Send a message to another user (or queue it if the other user is not active)
+                # Prompt the user to enter a message and recipient.
                 deliver_new_message(client, user)
+
             elif task == 'Delete Account':
+                # Attempt to delete the user's account from the server.
                 if delete_account(client, user):
                     break
+
+        # If the user has logged out, exit the program.
         if user is None:
             send_message(client, QUIT_COMMAND)
             exit(0)
+
+        # Close the client connection.
         quit(client)
+
     except:
+        # Exit the program if an exception is raised.
         exit(0)
 
 def deliver_new_message(client, username):
