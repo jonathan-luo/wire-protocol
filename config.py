@@ -9,7 +9,8 @@ LOGOUT_COMMAND = 5 # Command number that signals to server that they are being a
 
 RECEIVE_MESSAGE_COMMAND = 6  # Command number that signals to clients that a message is being delivered
 
-QUIT_COMMAND = 9 # Command number that signals to server that the client is wants to disconnect
+DELETE_ACCOUNT_COMMAND = 7 # Command number that signals to server that the client wants to delete their account
+QUIT_COMMAND = 9 # Command number that signals to server that the client wants to disconnect
 
 TIME_FORMAT = '%Y-%m-%d %H:%M'
 BUFSIZE = 1024

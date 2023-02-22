@@ -1,3 +1,4 @@
+import hashlib
 import socket
 import threading
 import inquirer
@@ -33,6 +34,12 @@ def is_registered_user(client, username):
     return True
 
 
+def hash_password(password):
+    """Hashes password using SHA256"""
+
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
 def receive_server_messages(client):
     """Continually receive messages from server, displaying messages if they are messages
        otherwise queuing up the message"""
@@ -41,7 +48,7 @@ def receive_server_messages(client):
         # Receive message from server
         message = client.recv(BUFSIZE).decode()
         message = message.rstrip()
-        
+
         # Remove the extra '|' at the end of the message
         message = message[:-1]
 
@@ -88,7 +95,7 @@ def display_message(sender, recipient, message, time):
         Time: {time}
 
         {message}
-        
+
         ----------------------------------------
     '''))
 
@@ -98,6 +105,36 @@ def send_message(client, command, *args):
 
     message = f"{command}|" + "|".join(args)
     client.send(message.encode())
+
+
+def delete_account(client, username):
+    """Procedure to delete account"""
+
+    # First check whether the user is logged in on multiple devices
+    send_message(client, MULTIPLE_LOGIN_COMMAND, username)
+    message = process_response(client, MULTIPLE_LOGIN_COMMAND)
+    if message[0] == 'True':
+        question = [inquirer.Confirm('confirm_logout',
+            message='It appears that your account is logged in on multiple devices. You must only be logged in on one device to delete an account.\nWould you like to log out of all other devices?'
+        )]
+        response = inquirer.prompt(question)['confirm_logout']
+
+        # Cancel deletion workflow if user refuses to log out of other devices
+        if not response:
+            return False
+
+        # If user confirms to logout of all devices, logout all other clients.
+        send_message(client, LOGOUT_COMMAND)
+        message = process_response(client, LOGOUT_COMMAND)
+
+    # Request for password as final step to confirm deletion
+    question = [inquirer.Password('password',
+        message='Please enter your password to confirm deletion',
+        validate=lambda _, x: validate_input(x))]
+    password = inquirer.prompt(question)['password']
+    send_message(client, DELETE_ACCOUNT_COMMAND, hash_password(password))
+    message = process_response(client, DELETE_ACCOUNT_COMMAND)
+    return True
 
 
 def quit(client):
@@ -142,15 +179,8 @@ def handle_client(client):
             # Send a message to another user (or queue it if the other user is not active)
             deliver_new_message(client, user)
         elif task == 'Delete Account':
-            # TODO: Edit to utilize wire protocols 4 and 5 (i.e., verify that only one instance of user logged in,
-            # and prompt whether they want to log out every other instance)
-            # Delete the user's account
-            question = [inquirer.Password('password',
-                message='Please enter your password to confirm deletion',
-                validate=lambda _, x: validate_input(x))]
-            password = inquirer.prompt(question)['password']
-            send_message(client, 8, password)
-            message = process_response(client, 8)
+            if delete_account(client, user):
+                break
     quit(client)
 
 
@@ -189,7 +219,7 @@ def login(client):
                     message=f"Please enter your username",
                     validate=lambda _, x: validate_input(x))]
     user = inquirer.prompt(question)['user']
-    
+
     send_message(client, LOGIN_COMMAND, user)
 
     # Follow designated login procedure based on server response
@@ -201,11 +231,11 @@ def login_registered_user(client, user):
     """Login procedure for a registered user"""
 
     question = [inquirer.Password('password',
-        message='Please enter your password',
+        message=f'Welcome back, {user}! Please enter your password',
         validate=lambda _, x: validate_input(x))]
     password = inquirer.prompt(question)['password']
 
-    send_message(client, LOGIN_COMMAND, password)
+    send_message(client, LOGIN_COMMAND, hash_password(password))
     response = process_response(client, LOGIN_COMMAND)
 
     tries = 4
@@ -223,8 +253,7 @@ def login_registered_user(client, user):
                     message=f"Please re-enter your password",
                     validate=lambda _, x: validate_input(x))]
         password = inquirer.prompt(question)['password']
-        send_message(client, LOGIN_COMMAND, password)
-
+        send_message(client, LOGIN_COMMAND, hash_password(password))
         response = process_response(client, LOGIN_COMMAND)
 
     if response[0] == "success":
@@ -238,8 +267,17 @@ def login_new_user(client, user):
     """Account creation and login procedure for new user"""
 
     # Prompt for password
-    questions = [inquirer.Password('password', message=f"Welcome, {user}! Seems like you're new here! To register, please enter a password"),
-                 inquirer.Password('confirm', message="Please confirm your password")]
+    questions = [
+        inquirer.Password(
+            'password',
+            message=f"Welcome, {user}! Seems like you're new here! To register, please enter a password",
+            validate=lambda _, x: validate_input(x)
+        ),
+        inquirer.Password(
+            'confirm',
+            message="Please confirm your password",
+            validate=lambda _, x: validate_input(x)
+        )]
     password, confirm = inquirer.prompt(questions).values()
 
     # If the passwords don't match, ask for password again
@@ -249,11 +287,21 @@ def login_new_user(client, user):
         if not retry:
             return None
 
-        questions = [inquirer.Password('password', message="Please re-enter your desired password"),
-                        inquirer.Password('confirm', message="Please confirm your password")]
+        questions = [
+            inquirer.Password(
+                'password',
+                message="Please re-enter your desired password",
+                validate=lambda _, x: validate_input(x)
+            ),
+            inquirer.Password(
+                'confirm',
+                message="Please confirm your password",
+                validate=lambda _, x: validate_input(x)
+            )
+        ]
         password, confirm = inquirer.prompt(questions).values()
 
-    send_message(client, LOGIN_COMMAND, password)
+    send_message(client, LOGIN_COMMAND, hash_password(password))
     response = process_response(client, LOGIN_COMMAND)
 
     if response[0] == "success":
@@ -289,7 +337,7 @@ def start_client():
 
             user_thread = threading.Thread(target=handle_client, args=([client]))
             user_thread.start()
-            
+
             message_reception_thread = threading.Thread(target=receive_server_messages, args=([client]))
             message_reception_thread.start()
         except:

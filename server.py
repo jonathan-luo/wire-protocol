@@ -9,7 +9,7 @@ from config import *
 
 # Dictionary to store the users, their messages, and the unsent message queue
 accounts = {}                                      # Maps username to password hash
-messages = defaultdict(lambda: defaultdict(list))  # Organized such that [s, r] holds a list of UserMessages sent from sender `s` to recipient `r`
+messages = defaultdict(lambda: defaultdict(list))  # Organized such that [s][r] holds a list of UserMessages sent from sender `s` to recipient `r`
 unsent_message_queue = defaultdict(list)           # Organized such that [r] holds a list of unsent UserMessages to recipient `r`
 
 # Thread locks
@@ -86,16 +86,14 @@ def login(lock, client):
         response = process_specific_message(client, LOGIN_COMMAND)
         if response is None:
             return None
-        password = response[0]
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        password_hash = response[0]
 
         while accounts[username] != password_hash:
             send_message(client, LOGIN_COMMAND, "error")
             response = process_specific_message(client, LOGIN_COMMAND)
             if response is None:
                 return None
-            password = response[0]
-            password_hash = hashlib.sha256(password.encode()).hexdigest()
+            password_hash = response[0]
     else:
         # Create new lock associated with username
         user_locks[username] = Lock()
@@ -107,8 +105,7 @@ def login(lock, client):
         response = process_specific_message(client, LOGIN_COMMAND)
         if response is None:
             return None
-        password = response[0]
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        password_hash = response[0]
         accounts[username] = password_hash
 
     # Add the client to the connected clients list
@@ -183,6 +180,16 @@ def deliver_unsent_message(client, message):
     )
 
 
+def delete_account(client, username):
+    """Deletes account from records"""
+
+    with user_locks[username]:
+        del accounts[username]
+        del unsent_message_queue[username]
+
+    send_message(client, DELETE_ACCOUNT_COMMAND, 'success')
+
+
 def quit(lock, client, username):
     """Logs out the instance of account `username` using socket `client`"""
 
@@ -241,7 +248,10 @@ def handle_client(lock, client, address):
             for c in connected_clients[username]:
                 if c != client:
                     quit(lock, client, username)
-            send_message(client, LOGOUT_COMMAND, 'Success')
+            send_message(client, LOGOUT_COMMAND, 'success')
+        elif command == DELETE_ACCOUNT_COMMAND:
+            # Delete account
+            delete_account(client, username)
         elif command == QUIT_COMMAND:
             quit(lock, client, username)
             break
