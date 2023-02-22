@@ -20,7 +20,12 @@ class ChatService(pb2_grpc.ChatServicer):
     def __init__(self, *args, **kwargs):
         pass
 
+
     def CreateAccount(self, request, context):
+        '''
+        Creates a new account with the given username and password.
+        If the username already exists, an error is returned.
+        '''
         username = request.username
         password = request.password
         if username not in accounts:
@@ -35,7 +40,12 @@ class ChatService(pb2_grpc.ChatServicer):
         
         return pb2.ServerResponse(**response)
 
+
     def DeleteAccount(self, request, context):
+        '''
+        Deletes the account with the given username and password.
+        If the username or password is incorrect, an error is returned.
+        '''
         username = request.username
         password = request.password
         if username not in accounts:
@@ -53,9 +63,11 @@ class ChatService(pb2_grpc.ChatServicer):
         response = {'message': result, 'error': False}
         return pb2.ServerResponse(**response)
 
-    # Once use logs in, server immediately creates a thread for that user that is working on user's behalf
-    # Looking for messages
+
     def Login(self, request, context):
+        # Once use logs in, server immediately creates a thread for that
+        # user that is working on user's behalf
+        # Looking for messages
         username = request.username
         password = request.password
         
@@ -65,7 +77,7 @@ class ChatService(pb2_grpc.ChatServicer):
             return pb2.ServerResponse(**response)
 
         if password != accounts[username]:
-            result = "Password does not match username"
+            result = f"Incorrect password for {username}'s account."
             response = {'message': result, 'error': True}
             return pb2.ServerResponse(**response)
             
@@ -74,12 +86,14 @@ class ChatService(pb2_grpc.ChatServicer):
         response = {'message': result, 'error': False}
         return pb2.ServerResponse(**response)
 
+
     def Logout(self, request, context):
         username = request.username
         accounts_status[username] = False
         result = f'{username}, you are logged out'
         response = {'message': result, 'error': False}
         return pb2.ServerResponse(**response)
+
 
     def ListAccounts(self, request, context):
         searchterm = request.searchterm
@@ -92,8 +106,10 @@ class ChatService(pb2_grpc.ChatServicer):
         response = {'usernames': accounts_str}
         return pb2.Accounts(**response)
 
-    # Send Message puts message into the destination user's queue
+
     def SendMessage(self, request, context):
+        '''Puts message into the destination user's queue'''
+
         destination = request.destination
         source = request.source
         text = request.text
@@ -116,6 +132,7 @@ class ChatService(pb2_grpc.ChatServicer):
         response = {'message': result, 'error': False}
         return pb2.ServerResponse(**response)
 
+
     def ListenMessages(self, request, context):
         username = request.username
         while accounts_status[username] == True:
@@ -133,8 +150,9 @@ def serve():
     server.add_insecure_port('[::]:50051')
     server.start()
     host = socket.gethostbyname(socket.gethostname())
-    print(f'server started on {host}')
+    print(f'Server started on {host}')
     server.wait_for_termination()
+
 
 if __name__ == '__main__':
     serve()

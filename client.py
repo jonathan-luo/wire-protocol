@@ -408,7 +408,6 @@ def start_client():
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect((host, port))
 
-            # TODO: Come up with a badass name
             print("Welcome to <Name TBD>!")
 
             user_thread = threading.Thread(target=handle_client, args=([client]))
