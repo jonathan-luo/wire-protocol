@@ -88,6 +88,8 @@ class ChatService(pb2_grpc.ChatServicer):
 
 
     def Logout(self, request, context):
+        '''Logout the client'''
+        
         username = request.username
         accounts_status[username] = False
         result = f'{username}, you are logged out'
@@ -96,6 +98,8 @@ class ChatService(pb2_grpc.ChatServicer):
 
 
     def ListAccounts(self, request, context):
+        '''Lists the available accounts'''
+    
         searchterm = request.searchterm
         pattern = re.compile(searchterm)
         accounts_str = ""
@@ -114,11 +118,13 @@ class ChatService(pb2_grpc.ChatServicer):
         source = request.source
         text = request.text
 
+        # If the source is not logged in, return an error
         if source not in accounts or accounts_status[source] == False:
             result = "Error: username not valid or not logged in"
             response = {'message': result, 'error': True}
             return pb2.ServerResponse(**response)
 
+        # If the destination is not a valid account, return an error
         if destination not in accounts:
             result = "Error: destination not valid"
             response = {'message': result, 'error': True}
@@ -135,6 +141,7 @@ class ChatService(pb2_grpc.ChatServicer):
 
     def ListenMessages(self, request, context):
         username = request.username
+        
         while accounts_status[username] == True:
             myDict = accounts_queue[username]
             for sender in list(myDict):
@@ -145,8 +152,8 @@ class ChatService(pb2_grpc.ChatServicer):
 
 
 def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    pb2_grpc.add_ChatServicer_to_server(ChatService(), server)
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10)) # 10 threads
+    pb2_grpc.add_ChatServicer_to_server(ChatService(), server) # Add service to server
     server.add_insecure_port('[::]:50051')
     server.start()
     host = socket.gethostbyname(socket.gethostname())
