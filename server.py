@@ -5,10 +5,7 @@ import hashlib
 import re
 import threading
 from threading import Lock
-
-BUFSIZE = 1024
-
-RECEIVE_MESSAGE_COMMAND = 6  # Command number that signals to clients that a message is being delivered
+from config import *
 
 # Dictionary to store the users, their messages, and the unsent message queue
 accounts = {}                                      # Maps username to password hash
@@ -64,11 +61,10 @@ def send_message(client, command, *args):
 
     with client_locks[client]:
         message = f"{command}|" + "|".join(args)
+        message += '|'
         padding = ' ' * (BUFSIZE - len(message))
         message += padding
         client.send(message.encode())
-        # if int(command) == RECEIVE_MESSAGE_COMMAND:
-        #     process_specific_message(client, command)
 
 
 def login(lock, client):
@@ -78,24 +74,24 @@ def login(lock, client):
         return None
     command, args = message
 
-    if command != 0:
+    if command != LOGIN_COMMAND:
         return None
 
     username = args[0]
     if username in accounts:
         # If the username exists, ask for password
-        send_message(client, 0, "exists")
+        send_message(client, LOGIN_COMMAND, "exists")
 
         # Hash the entered password and check it against the stored password hash
-        response = process_specific_message(client, 0)
+        response = process_specific_message(client, LOGIN_COMMAND)
         if response is None:
             return None
         password = response[0]
         password_hash = hashlib.sha256(password.encode()).hexdigest()
 
         while accounts[username] != password_hash:
-            send_message(client, 0, "error")
-            response = process_specific_message(client, 0)
+            send_message(client, LOGIN_COMMAND, "error")
+            response = process_specific_message(client, LOGIN_COMMAND)
             if response is None:
                 return None
             password = response[0]
@@ -105,10 +101,10 @@ def login(lock, client):
         user_locks[username] = Lock()
 
         # If the username doesn't exist
-        send_message(client, 0, "new")
+        send_message(client, LOGIN_COMMAND, "new")
 
         # Hash the entered password and check it against the stored password hash
-        response = process_specific_message(client, 0)
+        response = process_specific_message(client, LOGIN_COMMAND)
         if response is None:
             return None
         password = response[0]
@@ -119,7 +115,7 @@ def login(lock, client):
     connected_clients[username].add(client)
 
     # Send a success message to the client
-    send_message(client, 0, "success")
+    send_message(client, LOGIN_COMMAND, "success")
     print(f"{username} has joined the chat")
 
     return username
@@ -132,7 +128,7 @@ def list_users(client, username, query: str = None):
     if all_connected_users:
         # If no wildcard query provided, return all active users other than the current user
         if not query:
-            send_message(client, 1, *all_connected_users)
+            send_message(client, VIEW_USERS_COMMAND, *all_connected_users)
             return all_connected_users
 
         # Translate wildcard query to regex
@@ -142,11 +138,11 @@ def list_users(client, username, query: str = None):
 
         # If username matches exist, return those matches
         if result:
-            send_message(client, 1, *result)
+            send_message(client, VIEW_USERS_COMMAND, *result)
             return result
 
     # Else return that no users were found.
-    send_message(client, 1, "No users found.")
+    send_message(client, VIEW_USERS_COMMAND, "No users found.")
     return None
 
 
@@ -173,7 +169,7 @@ def deliver_new_message(lock, client, *args):
         messages[sender][recipient].append(packaged_message)
 
     # Success
-    send_message(client, 2, 'Success')
+    send_message(client, SEND_MESSAGE_COMMAND, 'Success')
     return packaged_message
 
 
@@ -227,25 +223,25 @@ def handle_client(lock, client, address):
             break
         command, args = message
 
-        if command == 1:
+        if command == VIEW_USERS_COMMAND:
             # List other active users based on wildcard query provided (if any)
             list_users(client, username, args[0])
-        elif command == 2:
+        elif command == SEND_MESSAGE_COMMAND:
             # Deliver message to user IF the recipient is logged in; otherwise, queue it.
             deliver_new_message(lock, client, *args)
-        elif command == 3:
+        elif command == CHECK_ACCOUNT_COMMAND:
             # Returns to client whether an account is a registered account.
-            send_message(client, 3, str(args[0] in accounts))
-        elif command == 4:
+            send_message(client, CHECK_ACCOUNT_COMMAND, str(args[0] in accounts))
+        elif command == MULTIPLE_LOGIN_COMMAND:
             # Returns to client whether a user is currently logged in on multiple devices
-            send_message(client, 4, str(len(connected_clients[username]) > 1))
-        elif command == 5:
+            send_message(client, MULTIPLE_LOGIN_COMMAND, str(len(connected_clients[username]) > 1))
+        elif command == LOGOUT_COMMAND:
             # Logs out all instances of `username` aside from the one using socket `client`
             for c in connected_clients[username]:
                 if c != client:
                     quit(lock, client, username)
-            send_message(client, 5, 'Success')
-        elif command == 9:
+            send_message(client, LOGOUT_COMMAND, 'Success')
+        elif command == QUIT_COMMAND:
             quit(lock, client, username)
             break
 

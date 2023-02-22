@@ -4,13 +4,7 @@ import inquirer
 from datetime import datetime
 from ipaddress import ip_address
 from textwrap import dedent
-
-TIME_FORMAT = '%Y-%m-%d %H:%M'
-BUFSIZE = 1024
-
-MAX_MESSAGE_LENGTH = 280     # Character limit for input strings
-RECEIVE_MESSAGE_COMMAND = 6  # Command number that overrides inquirer prompts and immediately displays messages received
-illegal_characters = {'|'}   # Characters that are not allowed in usernames or passwords or messages to prevent injection attacks
+from config import *
 
 # Queue for message reception thread to load non-message display server messages to
 server_message_queue = []
@@ -21,9 +15,9 @@ def validate_input(input):
 
     if len(input) > MAX_MESSAGE_LENGTH:
         raise inquirer.errors.ValidationError("", reason=f"Your input cannot exceed {MAX_MESSAGE_LENGTH} characters.")
-    if len(input) == 0:
+    if len(input) == LOGIN_COMMAND:
         raise inquirer.errors.ValidationError("", reason=f"Your input cannot be empty.")
-    for i in illegal_characters:
+    for i in ILLEGAL_CHARS:
         if i in input:
             raise inquirer.errors.ValidationError("", reason=f"Your input cannot contain the character '{i}'.")
     return True
@@ -32,8 +26,8 @@ def validate_input(input):
 def is_registered_user(client, username):
     """Checks whether `username` is a registered account by contacting server"""
 
-    send_message(client, 3, username)
-    message = process_response(client, 3)
+    send_message(client, CHECK_ACCOUNT_COMMAND, username)
+    message = process_response(client, CHECK_ACCOUNT_COMMAND)
     if message[0] == 'False':
         raise inquirer.errors.ValidationError("", reason=f"'{username}' is not a registered account.")
     return True
@@ -47,6 +41,9 @@ def receive_server_messages(client):
         # Receive message from server
         message = client.recv(BUFSIZE).decode()
         message = message.rstrip()
+        
+        # Remove the extra '|' at the end of the message
+        message = message[:-1]
 
         # If message is None, we know that we've disconnected and we can exit
         if not message:
@@ -60,9 +57,6 @@ def receive_server_messages(client):
         if int(command) == RECEIVE_MESSAGE_COMMAND:
             sender, recipient, message, time = args
             display_message(sender, recipient, message, time)
-
-            # # Acknowledge to server that message received
-            # send_message(client, RECEIVE_MESSAGE_COMMAND, "success")
 
         # Else queue the operation up
         else:
@@ -106,7 +100,7 @@ def send_message(client, command, *args):
 def quit(client):
     """Quit the client"""
 
-    send_message(client, 9)
+    send_message(client, QUIT_COMMAND)
 
 
 def handle_client(client):
@@ -138,8 +132,8 @@ def handle_client(client):
                 validate=lambda _, x: validate_input(x)
             )]
             wildcard_query = inquirer.prompt(question)['query']
-            send_message(client, 1, wildcard_query)
-            message = process_response(client, 1)
+            send_message(client, VIEW_USERS_COMMAND, wildcard_query)
+            message = process_response(client, VIEW_USERS_COMMAND)
             print("\nAvailable users:\n" + "\n".join(message) + "\n")
         elif task == 'Send New Message':
             # Send a message to another user (or queue it if the other user is not active)
@@ -180,8 +174,8 @@ def deliver_new_message(client, username):
     current_time = str(datetime.now().strftime(TIME_FORMAT))
     answer = inquirer.prompt(questions)
     recipient, message = answer['recipient'], answer['message']
-    send_message(client, 2, username, recipient, message, current_time)
-    message = process_response(client, 2)
+    send_message(client, SEND_MESSAGE_COMMAND, username, recipient, message, current_time)
+    message = process_response(client, SEND_MESSAGE_COMMAND)
 
 
 def login(client):
@@ -193,10 +187,10 @@ def login(client):
                     validate=lambda _, x: validate_input(x))]
     user = inquirer.prompt(question)['user']
     
-    send_message(client, 0, user)
+    send_message(client, LOGIN_COMMAND, user)
 
     # Follow designated login procedure based on server response
-    response = process_response(client, 0)
+    response = process_response(client, LOGIN_COMMAND)
     return login_registered_user(client, user) if response[0] == "exists" else login_new_user(client, user)
 
 
@@ -208,15 +202,15 @@ def login_registered_user(client, user):
         validate=lambda _, x: validate_input(x))]
     password = inquirer.prompt(question)['password']
 
-    send_message(client, 0, password)
-    response = process_response(client, 0)
+    send_message(client, LOGIN_COMMAND, password)
+    response = process_response(client, LOGIN_COMMAND)
 
     tries = 4
     while response[0] == "error":
         tries -= 1
         if tries == 0:
             print("Too many failed attempts. Please try again later.")
-            send_message(client, 9)
+            send_message(client, QUIT_COMMAND)
             return None
         question = [inquirer.Confirm('retry', message=f"Hmm, seems like your password was incorrect. You have {tries} more tries. Would you like to retry?")]
         retry = inquirer.prompt(question)['retry']
@@ -226,9 +220,9 @@ def login_registered_user(client, user):
                     message=f"Please re-enter your password",
                     validate=lambda _, x: validate_input(x))]
         password = inquirer.prompt(question)['password']
-        send_message(client, 0, password)
+        send_message(client, LOGIN_COMMAND, password)
 
-        response = process_response(client, 0)
+        response = process_response(client, LOGIN_COMMAND)
 
     if response[0] == "success":
         print("Successfully logged in!")
@@ -255,8 +249,8 @@ def login_new_user(client, user):
                         inquirer.Password('confirm', message="Please confirm your password")]
         password, confirm = inquirer.prompt(questions).values()
 
-    send_message(client, 0, password)
-    response = process_response(client, 0)
+    send_message(client, LOGIN_COMMAND, password)
+    response = process_response(client, LOGIN_COMMAND)
 
     if response[0] == "success":
         print("Successfully registered and logged in!")
