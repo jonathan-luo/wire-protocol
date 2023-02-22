@@ -115,7 +115,13 @@ class ChatClient:
         account = pb2.Account(username=username)
         messages = self.stub.ListenMessages(account)
         for msg in messages:
-            print(msg.text)
+            format = f'''
+            ______________________________________________________________
+            New message from {msg.source}:
+            {msg.text}
+            ______________________________________________________________
+            '''
+            print(format)
 
 
 def login_ui(client):
@@ -174,17 +180,16 @@ if __name__ == '__main__':
     th = threading.Thread(target=client.listen_messages, args=(username,))
     th.start()
 
-    # Define the questions to ask the user using inquirer
-    questions = [
-        inquirer.List('action',
+    list_questions = [
+            inquirer.List('action',
                       message="What do you want to do?",
                       choices=['List accounts', 'Send message', 'Logout', 'Delete account']
                       ),
     ]
-
     while (True):
+        # Define the questions to ask the user using inquirer
         # Ask the user what action they want to take
-        answers = inquirer.prompt(questions)
+        answers = inquirer.prompt(list_questions)
 
         # Handle the user's chosen action
         if answers['action'] == "List accounts":
@@ -203,7 +208,7 @@ if __name__ == '__main__':
 
         elif answers['action'] == "Send message":
             # Ask the user for the recipient and message text
-            questions = [
+            msg_questions = [
                 inquirer.Text(
                     'recipient',
                     message='Who would you like to send a message to?'
@@ -212,8 +217,8 @@ if __name__ == '__main__':
                     'message',
                     message='Please enter the message you would like to send'
                 )
-        ]
-            answers = inquirer.prompt(questions)
+            ]
+            answers = inquirer.prompt(msg_questions)
             destination, text = answers['recipient'], answers['message']
             # Call the send_message method on the ChatClient instance and print the result
             result = client.send_message(destination=destination, source=username, text=text)
@@ -221,8 +226,8 @@ if __name__ == '__main__':
 
         elif answers['action'] == "Logout":
             # Confirm that the user wants to log out
-            question = [inquirer.Confirm('logout', message="Are you sure you want to logout?")]
-            confirmation = inquirer.prompt(question)['logout']
+            logout_question = [inquirer.Confirm('logout', message="Are you sure you want to logout?")]
+            confirmation = inquirer.prompt(logout_question)['logout']
             if confirmation:
                 # Call the logout method on the ChatClient instance
                 client.logout(username=username)
@@ -237,12 +242,12 @@ if __name__ == '__main__':
 
         elif answers['action'] == "Delete account":
             # Ask the user for their password and confirm that they want to delete their account
-            question = [inquirer.Confirm('delete', message="Are you sure you want to delete your account?")]
-            confirmation = inquirer.prompt(question)['delete']
+            delete_question = [inquirer.Confirm('delete', message="Are you sure you want to delete your account?")]
+            confirmation = inquirer.prompt(delete_question)['delete']
             if confirmation:
                 # Call the delete_account method on the ChatClient instance
-                questions = [inquirer.Password('password', message="Password:"),]
-                password = inquirer.prompt(questions)['password']
+                delete_question = [inquirer.Password('password', message="Password:"),]
+                password = inquirer.prompt(delete_question)['password']
                 result = client.delete_account(username=username, password=password)
                 if result.error == True:
                     print(result.message)
