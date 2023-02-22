@@ -85,7 +85,7 @@ class ChatClient:
         - searchterm (str): The search term to use.
 
         Returns:
-        - A pb2.ServerResponse object representing the result of the operation.
+        - A pb2.Accounts object representing the accounts list.
         """
         search_term = pb2.SearchTerm(searchterm=searchterm)
         return self.stub.ListAccounts(search_term)
