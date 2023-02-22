@@ -86,7 +86,7 @@ The user's selection menu consists of:
 
     After this succeeds, the user is then prompted to enter their password to complete deletion. If this password is correct (i.e., its SHA256 hash matches the password hash stored for the account), then account deletion completes (`delete_account()` is called), deleting the account's information from the `accounts` and `unsent_message_queue` dictionaries (more details in Locks section below). If the password is incorrect, the account deletion workflow is terminated, and a message is printed, stating "Your password was incorrect, account deletion cancelled."
 
-    *Note: Due to the nature of `inquirer` prompts, although the other clients are terminated (i.e., their sockets are closed, and their information is removed from the `connected_clients` dictionary), these other clients cannot be immediately terminated in the terminal, since the `inquirer` prompt is still pending. To fully terminate these clients, simply pressing ctrl+c as a keyboard interrupt suffices, or toggling to select Quit/Log Out as one of the `inquirer` options.
+    *Note: Due to the nature of `inquirer` prompts, although the other clients are terminated (i.e., their sockets are closed, and their information is removed from the `connected_clients` dictionary), these other clients cannot be immediately terminated in the terminal, since the `inquirer` prompt is still pending. To fully terminate these clients, simply pressing ctrl+c as a keyboard interrupt suffices, or toggling to select Quit/Log Out as one of the `inquirer` options. Also because of this behavior, the `while True:` loop within the `handle_client()` function in `client.py` is wrapped in a try-except block, to suppress the error messages that arise from using ctrl+c or initiating calls through a closed socket.
 
 - Quit
 
@@ -132,3 +132,27 @@ Our server uses locks to synchronize access to shared resources in a thread-safe
 The locks ensure that only one thread at a time can modify the shared resources, preventing race conditions and ensuring that the data is consistent and correct.
 
 ## Implementation with gRPC ##
+
+- Connecting to the Server:
+Just as in the first implementation, the client is immediately prompted to enter the IP address of the server, which will be connected to.
+
+- Relevant Structures
+All structured messages used in this code cna be found in protos/chat.proto.  To summarize, there is an account message that stores a username and a password for an account.  There is an accounts message that stores a list of accounts (used in the "list" funcionality).  A ServerResponse is a message returned by the server, which contains a message as well as a boolean field indicating if there was an error or not.  MessageInfo is contains all metadata and information required for a message, including the username of the sender, the username of the recipient, and the message itself.  A NoParam message is needed because gRPC does not have any built-in concept of void for a function that takes no arguments or does not return anything meaningful.  Finally, a SearchTerm is simply a string containing a search term for listing accounts.
+
+- Logging in and Creating an Account:
+When the client connects to the server, the user is prompted to enter their name and password.  If the username is found in the accounts dictionary stored in the server, then the the login logic will begin.  Otherwise, the use will be instructed that they haven't been seen before and will be prompted to confirm their password.
+When logging in, an error message will be returned if the password does not match the username or if username does not exist.  If logging in is successful, then the accounts_status dictionary is updated.  accounts_status[username] is set to True.  then on the client, a new thread is created which immediately begins running listening functionality described below.
+
+- Listening for Messages
+In the server, there is a dictionary called accounts_queue which associates a username with a dictionary.  These subdictionaries associate senders with a list of messages from them.  The ListenMessages function will take in an account message and then initiate a loop that will continually check that the username given in the account message is logged in (checked by looking at accounts_status dictionary).  While the given user is logged in, then a scan of the accounts_queue data structure will be performed and messages for the user will be sent to the listening client.  In gRPC terms, a stream of messages is given to the client.  When the user logs out, the loop will no longer execute and the function will terminate, leading to the termination of the thread that was created.  When the user logs back in, another thread will be created for them to listen once again.
+
+- Sending Messages
+In the SendMessage function on the server, the primary thing that happens is a modification to the accounts_queue data structure (described in Listening for Messages section).  If the user is currently logged in, then their listening functionality will be running and they will see that message right away and pull it from the data structure.  Otherwise, the message will sit in that data structure until the user logs in and runs that listening functionality.
+
+- Deleting an Account
+Server: Takes in an account message and deletes the associated username from the dictionary data structures in the server.  
+Client: Can only delete your own account.  The client is not prompted for a username, but instead the current username is packaged into an account message and passed to the server.  The client is asked for confirmation and for a correct password before deletion is performed due to the sensitive nature of the operation.
+
+- Loggin Out
+Server: Takes in an account message and sets accounts_status[username] to False.
+Client: Can only log itself out, cannot log out other users.  As such, client is not prompted for a username but instead the current username is sent to the server for logging out.  The client is asked for confirmation, but not for their password.
