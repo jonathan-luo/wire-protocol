@@ -36,7 +36,6 @@ def is_registered_user(client, username):
 def receive_server_messages(client):
     """Continually receive messages from server, displaying messages if they are messages
        otherwise queuing up the message"""
-
     while True:
         # Receive message from server
         message = client.recv(BUFSIZE).decode()
@@ -110,9 +109,9 @@ def handle_client(client):
     """Send and receive messages to and from the server and print them to the console"""
 
     user = login(client)
-    if not user:
-        client.close()
-        return
+    if user is None:
+        send_message(client, QUIT_COMMAND)
+        exit(0)
 
     task = None
     choices = ['View Users', 'Send New Message', 'Delete Account', 'Quit/Log Out']
@@ -149,8 +148,8 @@ def handle_client(client):
                 message='Please enter your password to confirm deletion',
                 validate=lambda _, x: validate_input(x))]
             password = inquirer.prompt(question)['password']
-            send_message(client, 8, password)
-            message = process_response(client, 8)
+            send_message(client, DELETE_ACCOUNT_COMMAND, password)
+            message = process_response(client, DELETE_ACCOUNT_COMMAND)
     quit(client)
 
 
@@ -213,12 +212,11 @@ def login_registered_user(client, user):
         tries -= 1
         if tries == 0:
             print("Too many failed attempts. Please try again later.")
-            send_message(client, QUIT_COMMAND)
-            return None
+            break
         question = [inquirer.Confirm('retry', message=f"Hmm, seems like your password was incorrect. You have {tries} more tries. Would you like to retry?")]
         retry = inquirer.prompt(question)['retry']
         if not retry:
-            return None
+            break
         question = [inquirer.Password('password',
                     message=f"Please re-enter your password",
                     validate=lambda _, x: validate_input(x))]
