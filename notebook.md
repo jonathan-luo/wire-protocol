@@ -132,3 +132,19 @@ Our server uses locks to synchronize access to shared resources in a thread-safe
 The locks ensure that only one thread at a time can modify the shared resources, preventing race conditions and ensuring that the data is consistent and correct.
 
 ## Implementation with gRPC ##
+
+- Connecting to the Server:
+Just as in the first implementation, the client is immediately prompted to enter the IP address of the server, which will be connected to.
+
+- Relevant Structures
+All structured messages used in this code cna be found in protos/chat.proto.  To summarize, there is an account message that stores a username and a password for an account.  There is an accounts message that stores a list of accounts (used in the "list" funcionality).  A ServerResponse is a message returned by the server, which contains a message as well as a boolean field indicating if there was an error or not.  MessageInfo is contains all metadata and information required for a message, including the username of the sender, the username of the recipient, and the message itself.  A NoParam message is needed because gRPC does not have any built-in concept of void for a function that takes no arguments or does not return anything meaningful.  Finally, a SearchTerm is simply a string containing a search term for listing accounts.
+
+- Logging in and Creating an Account:
+When the client connects to the server, the user is prompted to enter their name and password.  If the username is found in the accounts dictionary stored in the server, then the the login logic will begin.  Otherwise, the use will be instructed that they haven't been seen before and will be prompted to confirm their password.
+When logging in, an error message will be returned if the password does not match the username or if username does not exist.  If logging in is successful, then the accounts_status dictionary is updated.  accounts_status[username] is set to True.  then on the client, a new thread is created which immediately begins running listening functionality described below.
+
+- Listening for Messages
+In the server, there is a dictionary called accounts_queue which associates a username with a dictionary.  These subdictionaries associate senders with a list of messages from them.  The ListenMessages function will initiate a loop that will continually check that the given username is logged in (checked by looking at accounts_status dictionary).  While the given user is logged in, then a scan of the accounts_queue data structure will be performed and messages for the user will be sent to the listening client.  In gRPC terms, a stream of messages is given to the client.
+
+- Sending Messages
+In the SendMessage function on the server, the primary thing that happens is a modification to the accounts_queue data structure (described in Listening for Messages section).  If the user is currently logged in, then their listening functionality will be running and they will see that message right away and pull it from the data structure.  Otherwise, the message will sit in that data structure until the user logs in and runs that listening functionality.
