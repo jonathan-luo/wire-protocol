@@ -82,11 +82,14 @@ def process_response(client, desired_command):
 
 def display_message(sender, recipient, message, time):
     print(dedent(f'''
+        ----------------------------------------
         From: {sender}
         To: {recipient}
         Time: {time}
 
         {message}
+        
+        ----------------------------------------
     '''))
 
 
@@ -226,8 +229,9 @@ def login_registered_user(client, user):
 
     if response[0] == "success":
         print("Successfully logged in!")
+        return user
 
-    return user
+    return None
 
 
 def login_new_user(client, user):
@@ -285,6 +289,7 @@ def start_client():
 
             user_thread = threading.Thread(target=handle_client, args=([client]))
             user_thread.start()
+            
             message_reception_thread = threading.Thread(target=receive_server_messages, args=([client]))
             message_reception_thread.start()
         except:
