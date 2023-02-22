@@ -82,9 +82,11 @@ The user's selection menu consists of:
 
     The server sees: `DELETE_ACCOUNT_COMMAND [username : str]`
 
-    When a user chooses to delete their account, a number of steps occur. Namely, first, if the user is logged in on multiple devices, the client making the deletion request is notified of this (this is done by sending the Verify Account Only Logged In On One Device hidden operation, detailed below), and is prompted whether they would like to log out of each of the other devices or not. If not, the account deletion workflow terminates. Otherwise, the Log Out All Other Instances hidden operation, documented below, is utilized to log out the user from each of the devices that was NOT the initiating client.
+    When a user chooses to delete their account, a number of steps occur. Namely, first, if the user is logged in on multiple devices, the client making the deletion request is notified of this (this is done by sending the Verify Account Only Logged In On One Device hidden operation, detailed below), and is prompted whether they would like to log out of each of the other devices or not. If not, the account deletion workflow terminates. Otherwise, the Log Out All Other Instances hidden operation, documented below, is utilized to log out the user from each of the devices that was NOT the initiating client*.
 
     After this succeeds, the user is then prompted to enter their password to complete deletion. If this password is correct (i.e., its SHA256 hash matches the password hash stored for the account), then account deletion completes (`delete_account()` is called), deleting the account's information from the `accounts` and `unsent_message_queue` dictionaries (more details in Locks section below). If the password is incorrect, the account deletion workflow is terminated, and a message is printed, stating "Your password was incorrect, account deletion cancelled."
+
+    *Note: Due to the nature of `inquirer` prompts, although the other clients are terminated (i.e., their sockets are closed, and their information is removed from the `connected_clients` dictionary), these other clients cannot be immediately terminated in the terminal, since the `inquirer` prompt is still pending. To fully terminate these clients, simply pressing ctrl+c as a keyboard interrupt suffices, or toggling to select Quit/Log Out as one of the `inquirer` options.
 
 - Quit
 
