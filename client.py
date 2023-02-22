@@ -1,3 +1,4 @@
+import hashlib
 import socket
 import threading
 import inquirer
@@ -36,6 +37,12 @@ def is_registered_user(client, username):
     return True
 
 
+def hash_password(password):
+    """Hashes password using SHA256"""
+
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
 def receive_server_messages(client):
     """Continually receive messages from server, displaying messages if they are messages
        otherwise queuing up the message"""
@@ -44,19 +51,25 @@ def receive_server_messages(client):
         message = client.recv(BUFSIZE).decode()
         message = message.rstrip()
 
+
         # Remove the extra '|' at the end of the message
         message = message[:-1]
 
         # If message is None, we know that we've disconnected and we can exit
         if not message:
             print("You have disconnected. Goodbye!")
+            client.close()
             exit(0)
 
         # Else, deserialize message
         command, *args = message.split("|")
 
-        # If `RECEIVE_MESSAGE_COMMAND`, display message
-        if int(command) == RECEIVE_MESSAGE_COMMAND:
+        # If `QUIT_COMMAND`, quit client
+        if int(command) == QUIT_COMMAND:
+            quit(client)
+
+        # Else if `RECEIVE_MESSAGE_COMMAND`, display message
+        elif int(command) == RECEIVE_MESSAGE_COMMAND:
             sender, recipient, message, time = args
             display_message(sender, recipient, message, time)
 
@@ -83,6 +96,7 @@ def process_response(client, desired_command):
 
 
 def display_message(sender, recipient, message, time):
+    """Display a message"""
     print(dedent(f'''
         ----------------------------------------
         From: {sender}
@@ -102,6 +116,48 @@ def send_message(client, command, *args):
     client.send(message.encode())
 
 
+def delete_account(client, username):
+    """Procedure to delete account"""
+
+    # Check if user is logged in on multiple devices
+    send_message(client, MULTIPLE_LOGIN_COMMAND, username)
+    message = process_response(client, MULTIPLE_LOGIN_COMMAND)
+
+    # If user is logged in on multiple devices, prompt them to log out of all other devices
+    if message[0] == 'True':
+        question = [inquirer.Confirm('confirm_logout',
+            message='It appears that your account is logged in on multiple devices. You must only be logged in on one device to delete an account.\nWould you like to log out of all other devices?'
+        )]
+        response = inquirer.prompt(question)['confirm_logout']
+
+        # If user refuses to log out of other devices, cancel account deletion
+        if not response:
+            return False
+
+        # Log out all other clients if user confirms
+        send_message(client, LOGOUT_COMMAND)
+        message = process_response(client, LOGOUT_COMMAND)
+
+    # Prompt user to confirm deletion with password
+    question = [inquirer.Password('password',
+        message='Please enter your password to confirm deletion',
+        validate=lambda _, x: validate_input(x))]
+    password = inquirer.prompt(question)['password']
+
+    # Send hashed password to server for authentication
+    send_message(client, DELETE_ACCOUNT_COMMAND, hash_password(password))
+    message = process_response(client, DELETE_ACCOUNT_COMMAND)
+
+    # If password is incorrect, cancel account deletion and inform user
+    if message[0] == 'error':
+        print("Your password was incorrect, account deletion cancelled.\n")
+        return False
+
+    # If account was successfully deleted, return True
+    return True
+
+
+
 def quit(client):
     """Quit the client"""
 
@@ -109,53 +165,70 @@ def quit(client):
 
 
 def handle_client(client):
-    """Send and receive messages to and from the server and print them to the console"""
-
+    """ Send and receive messages to and from the server and print them to the console. """
+    
+    # Authenticate the user with the server.
     user = login(client)
-    if user is None:
-        send_message(client, QUIT_COMMAND)
-        exit(0)
+    
+    try:
+        # If the user could not be authenticated, exit the program.
+        if user is None:
+            send_message(client, QUIT_COMMAND)
+            exit(0)
 
-    task = None
-    choices = ['View Users', 'Send New Message', 'Delete Account', 'Quit/Log Out']
-    while (task != 'Quit/Log Out'):
-        questions = [
+        # Prompt the user for a task until they choose to quit.
+        task = None
+        choices = ['View Users', 'Send New Message', 'Delete Account', 'Quit/Log Out']
+        while (task != 'Quit/Log Out'):
+            questions = [
                 inquirer.List('task',
                     message=f"Please select a task. Type {RETURN_KEYWORD} to return to this menu.",
                     choices=choices,
                     carousel=True,
                 )
-        ]
-        answers = inquirer.prompt(questions)
-        task = answers['task']
+            ]
+            answers = inquirer.prompt(questions)
+            task = answers['task']
 
-        # TODO: Implement functionality for each task.
-        if task == 'View Users':
-            question = [inquirer.Text(
-                'query',
-                message='Input wildcard query for specific users ("*" for all users, "b*" for all users starting with "b", etc.)',
-                validate=lambda _, x: validate_input(x)
-            )]
-            wildcard_query = inquirer.prompt(question)['query']
-            if wildcard_query != RETURN_KEYWORD:
-                send_message(client, VIEW_USERS_COMMAND, wildcard_query)
-                message = process_response(client, VIEW_USERS_COMMAND)
-                print("\nAvailable users:\n" + "\n".join(message) + "\n")
-        elif task == 'Send New Message':
-            # Send a message to another user (or queue it if the other user is not active)
-            deliver_new_message(client, user)
-        elif task == 'Delete Account':
-            # TODO: Edit to utilize wire protocols 4 and 5 (i.e., verify that only one instance of user logged in,
-            # and prompt whether they want to log out every other instance)
-            # Delete the user's account
-            question = [inquirer.Password('password',
-                message='Please enter your password to confirm deletion',
-                validate=lambda _, x: validate_input(x))]
-            password = inquirer.prompt(question)['password']
-            send_message(client, DELETE_ACCOUNT_COMMAND, password)
-            message = process_response(client, DELETE_ACCOUNT_COMMAND)
-    quit(client)
+            # Execute the appropriate task based on the user's choice.
+            if task == 'View Users':
+                # Ask the user for a wildcard query for specific users.
+                question = [
+                    inquirer.Text(
+                        'query',
+                        message='Input wildcard query for specific users ("*" for all users, "b*" for all users starting with "b", etc.)',
+                        validate=lambda _, x: validate_input(x)
+                    )
+                ]
+                wildcard_query = inquirer.prompt(question)['query']
 
+                if wildcard_query != RETURN_KEYWORD:
+                    # Send a message to the server requesting the list of available users.
+                    send_message(client, VIEW_USERS_COMMAND, wildcard_query)
+                    # Process the response from the server and print it to the console.
+                    message = process_response(client, VIEW_USERS_COMMAND)
+                    print("\nAvailable users:\n" + "\n".join(message) + "\n")
+
+            elif task == 'Send New Message':
+                # Prompt the user to enter a message and recipient.
+                deliver_new_message(client, user)
+
+            elif task == 'Delete Account':
+                # Attempt to delete the user's account from the server.
+                if delete_account(client, user):
+                    break
+
+        # If the user has logged out, exit the program.
+        if user is None:
+            send_message(client, QUIT_COMMAND)
+            exit(0)
+
+        # Close the client connection.
+        quit(client)
+
+    except:
+        # Exit the program if an exception is raised.
+        exit(0)
 
 def deliver_new_message(client, username):
     """Prompts user for recipient and message, and contacts server"""
@@ -207,11 +280,11 @@ def login_registered_user(client, user):
     """Login procedure for a registered user"""
 
     question = [inquirer.Password('password',
-        message='Please enter your password',
+        message=f'Welcome back, {user}! Please enter your password',
         validate=lambda _, x: validate_input(x))]
     password = inquirer.prompt(question)['password']
 
-    send_message(client, LOGIN_COMMAND, password)
+    send_message(client, LOGIN_COMMAND, hash_password(password))
     response = process_response(client, LOGIN_COMMAND)
 
     tries = 4
@@ -228,8 +301,7 @@ def login_registered_user(client, user):
                     message=f"Please re-enter your password",
                     validate=lambda _, x: validate_input(x))]
         password = inquirer.prompt(question)['password']
-        send_message(client, LOGIN_COMMAND, password)
-
+        send_message(client, LOGIN_COMMAND, hash_password(password))
         response = process_response(client, LOGIN_COMMAND)
 
     if response[0] == "success":
@@ -243,8 +315,17 @@ def login_new_user(client, user):
     """Account creation and login procedure for new user"""
 
     # Prompt for password
-    questions = [inquirer.Password('password', message=f"Welcome, {user}! Seems like you're new here! To register, please enter a password"),
-                 inquirer.Password('confirm', message="Please confirm your password")]
+    questions = [
+        inquirer.Password(
+            'password',
+            message=f"Welcome, {user}! Seems like you're new here! To register, please enter a password",
+            validate=lambda _, x: validate_input(x)
+        ),
+        inquirer.Password(
+            'confirm',
+            message="Please confirm your password",
+            validate=lambda _, x: validate_input(x)
+        )]
     password, confirm = inquirer.prompt(questions).values()
 
     # If the passwords don't match, ask for password again
@@ -254,11 +335,21 @@ def login_new_user(client, user):
         if not retry:
             return None
 
-        questions = [inquirer.Password('password', message="Please re-enter your desired password"),
-                        inquirer.Password('confirm', message="Please confirm your password")]
+        questions = [
+            inquirer.Password(
+                'password',
+                message="Please re-enter your desired password",
+                validate=lambda _, x: validate_input(x)
+            ),
+            inquirer.Password(
+                'confirm',
+                message="Please confirm your password",
+                validate=lambda _, x: validate_input(x)
+            )
+        ]
         password, confirm = inquirer.prompt(questions).values()
 
-    send_message(client, LOGIN_COMMAND, password)
+    send_message(client, LOGIN_COMMAND, hash_password(password))
     response = process_response(client, LOGIN_COMMAND)
 
     if response[0] == "success":
@@ -287,7 +378,7 @@ def login_new_user(client, user):
                         inquirer.Password('confirm', message="Please confirm your password")]
         password, confirm = inquirer.prompt(questions).values()
 
-    send_message(client, 0, password)
+    send_message(client, 0, hash_password(password))
     response = process_response(client, 0)
 
     if response[0] == "success":
