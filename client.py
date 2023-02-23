@@ -363,8 +363,8 @@ def login_new_user(client, user):
 
 def login_new_user(client, user):
     """Account creation and login procedure for new user"""
-    questions = [inquirer.Password('password', message=f"Welcome, {user}! Seems like you're new here! To register, please enter a password"),
-                     inquirer.Password('confirm', message="Please confirm your password")]
+    questions = [inquirer.Password('password', message=f"Welcome, {user}! Seems like you're new here! To register, please enter a password", validate=lambda _, x: validate_input(x)),
+                     inquirer.Password('confirm', message="Please confirm your password", validate=lambda _, x: validate_input(x))]
     password, confirm = inquirer.prompt(questions).values()
 
     # If the passwords don't match, ask for password again
@@ -374,8 +374,8 @@ def login_new_user(client, user):
         if not retry:
             return None
 
-        questions = [inquirer.Password('password', message="Please re-enter your desired password"),
-                        inquirer.Password('confirm', message="Please confirm your password")]
+        questions = [inquirer.Password('password', message="Please re-enter your desired password", validate=lambda _, x: validate_input(x)),
+                        inquirer.Password('confirm', message="Please confirm your password", validate=lambda _, x: validate_input(x))]
         password, confirm = inquirer.prompt(questions).values()
 
     send_message(client, 0, hash_password(password))
