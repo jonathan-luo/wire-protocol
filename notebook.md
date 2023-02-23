@@ -157,5 +157,12 @@ Client: Can only delete your own account.  The client is not prompted for a user
 Server: Takes in an account message and sets accounts_status[username] to False.
 Client: Can only log itself out, cannot log out other users.  As such, client is not prompted for a username but instead the current username is sent to the server for logging out.  The client is asked for confirmation, but not for their password.
 
+## Comparison of Wire Protocol and gRPC
+The size of data being sent over the wire is smaller when using gRPC.  One way we figured this out was by taking the message sending functinoality as an example.  We used three different messages to test this out: "hello", "hello hello", and "hello hello hello", to see how an increasing message size would impact the size of the serialized data being sent across the wire.  In gRPC, the sizes are the following (in bytes): 20, 26, 32.  This was all done using the SerializeToString function provided by gRPC.  In our wire protocol, the sizes are the following (in bytes): 35, 41, 47.  We found a similar pattern for other types of functinoality requiring communication across the wire.  So gRPC turns out to be more compact.
+
+In terms of complexity of the code, gRPC ended up seeming less complex, mainly because gRPC provides useful abstractions that are not available when designing a wire protocol from scratch.
+
+In terms of performance, we find that our custom wire protocol implementation seems to be more efficient than our implementation of gRPC.  We use python's time.time_ns() function to compute time in nanoseconds at different points, and subtract those datapoints to determine time elapsed for a given operation.  For sending the message "hello" from one user to another, we found that over the course of 5 trials, the gRPC implementation takes somewhere between 17746000 nanoseconds and 39018000 nanoseconds, whereas our ground-up wire protocol implementation takes somewhere between 61000 and 82000 nanoseconds, which is indeed quite a difference.
+
 ## Unit Testing ##
 We included some preliminary unit testing for some of the most fundamental functionality of our chatting service, such as listing users and delivering messages. Nevertheless, the vast majority of functionality was tested manually, by analyzing various use cases and edge cases, and making sure that the intended behavior occurred. For instance, we manually tested that queuing messages (single and multiple) to a not logged in user was possible and printed properly in the user's screen.
