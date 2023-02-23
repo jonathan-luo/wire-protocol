@@ -189,12 +189,15 @@ def deliver_unsent_message(client, message):
     )
 
 
-def delete_account(client, username):
+def delete_account(lock, client, username):
     """Deletes account from records"""
 
     with user_locks[username]:
         del accounts[username]
         del unsent_message_queue[username]
+
+    with lock:
+        del user_locks[username]
 
     send_message(client, DELETE_ACCOUNT_COMMAND, 'success')
 
@@ -265,7 +268,7 @@ def handle_client(lock, client, address):
         elif command == DELETE_ACCOUNT_COMMAND:
             # Delete account if password is correct
             if args[0] == accounts[username]:
-                delete_account(client, username)
+                delete_account(lock, client, username)
             else:
                 send_message(client, DELETE_ACCOUNT_COMMAND, 'error')
         elif command == QUIT_COMMAND:
