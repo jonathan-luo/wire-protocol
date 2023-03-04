@@ -97,6 +97,7 @@ def process_response(client, desired_command):
 
 def display_message(sender, recipient, message, time):
     """Display a message"""
+
     print(dedent(f'''
         ----------------------------------------
         From: {sender}
